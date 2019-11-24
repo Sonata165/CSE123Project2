@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
@@ -31,47 +32,51 @@
 #define PACKET_DUMP_SIZE 1024
 
 /* forward declare */
-struct sr_if;
-struct sr_rt;
+typedef struct sr_if Interface;
+typedef struct sr_rt RTable;
 
 /* ----------------------------------------------------------------------------
  * struct sr_instance
  *
  * Encapsulation of the state for a single virtual router.
- *
  * -------------------------------------------------------------------------- */
-
-struct sr_instance
-{
-    int  sockfd;   /* socket to server */
+typedef struct sr_instance {
+    int sockfd; /* socket to server */
     char user[32]; /* user name */
-    char host[32]; /* host name */ 
+    char host[32]; /* host name */
     char template[30]; /* template name if any */
     unsigned short topo_id;
     struct sockaddr_in sr_addr; /* address to server */
-    struct sr_if* if_list; /* list of interfaces */
-    struct sr_rt* routing_table; /* routing table */
-    struct sr_arpcache cache;   /* ARP cache */
+    Interface* if_list; /* list of interfaces */
+    RTable* routing_table; /* routing table */
+    struct sr_arpcache cache; /* ARP cache */
     pthread_attr_t attr;
     FILE* logfile;
-};
+} Router;
 
 /* -- sr_main.c -- */
 int sr_verify_routing_table(struct sr_instance* sr);
 
 /* -- sr_vns_comm.c -- */
-int sr_send_packet(struct sr_instance* , uint8_t* , unsigned int , const char*);
-int sr_connect_to_server(struct sr_instance* ,unsigned short , char* );
-int sr_read_from_server(struct sr_instance* );
+int sr_send_packet(struct sr_instance* sr /* borrowed */,
+                    uint8_t* buf /* borrowed */,
+                    unsigned int len,
+                    const char* iface /* borrowed */);
+int sr_connect_to_server(struct sr_instance*, unsigned short, char*);
+int sr_read_from_server(struct sr_instance*);
 
 /* -- sr_router.c -- */
-void sr_init(struct sr_instance* );
-void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
+void sr_init(struct sr_instance*);
+void sr_handlepacket(struct sr_instance*, uint8_t*, unsigned int, char*);
+void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,
+    unsigned int len, char* interface);
+void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,
+    unsigned int len, char* interface);
 
 /* -- sr_if.c -- */
-void sr_add_interface(struct sr_instance* , const char* );
-void sr_set_ether_ip(struct sr_instance* , uint32_t );
-void sr_set_ether_addr(struct sr_instance* , const unsigned char* );
-void sr_print_if_list(struct sr_instance* );
+void sr_add_interface(struct sr_instance*, const char*);
+void sr_set_ether_ip(struct sr_instance*, uint32_t);
+void sr_set_ether_addr(struct sr_instance*, const unsigned char*);
+void sr_print_if_list(struct sr_instance*);
 
 #endif /* SR_ROUTER_H */

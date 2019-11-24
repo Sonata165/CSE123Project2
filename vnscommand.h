@@ -96,8 +96,8 @@ typedef struct
     uint32_t mLen;
     uint32_t mType;
     char     mInterfaceName[16];
-    uint8_t  ether_dhost[6];
-    uint8_t  ether_shost[6];
+    uint8_t  dst_mac_addr[6];
+    uint8_t  src_mac_addr[6];
     uint16_t ether_type;
 
 }__attribute__ ((__packed__)) c_packet_ethernet_header;

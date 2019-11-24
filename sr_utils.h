@@ -32,17 +32,22 @@ uint16_t cksum(const void* _data, int len);
 
 uint16_t ethertype(uint8_t* buf);
 uint8_t ip_protocol(uint8_t* buf);
+uint16_t get_arp_type(ArpHeader* hdr);
+uint32_t in_addr_to_ip(struct in_addr addr);
+
+void copy_eth_addr(unsigned char dst[], unsigned char src[]);
 
 void print_addr_eth(uint8_t* addr);
 void print_addr_ip(struct in_addr address);
 void print_addr_ip_int(uint32_t ip);
-
 void print_hdr_eth(uint8_t* buf);
 void print_hdr_ip(uint8_t* buf);
 void print_hdr_icmp(uint8_t* buf);
 void print_hdr_arp(uint8_t* buf);
-
-/* prints all headers, starting from eth */
 void print_hdrs(uint8_t* buf, uint32_t length);
+
+FrameAndLen construct_arp_request(unsigned char src_mac_addr[],
+                                uint32_t src_ip_addr,
+                                uint32_t dst_ip_addr);
 
 #endif /* -- SR_UTILS_H -- */

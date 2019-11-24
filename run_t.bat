@@ -1,0 +1,2 @@
+gcc test.c
+a

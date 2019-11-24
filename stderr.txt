@@ -1,0 +1,96 @@
+*** -> Received packet of length 42 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: FF:FF:FF:FF:FF:FF
+	source: 12:BD:6E:09:B5:2E
+	type: 2054
+ARP header
+	hardware type: 1
+	protocol type: 2048
+	hardware address length: 6
+	protocol address length: 4
+	opcode: 1             
+	sender hardware address: 12:BD:6E:09:B5:2E
+	sender ip address: 10.0.1.100
+	target hardware address: 00:00:00:00:00:00
+	target ip address: 10.0.1.1
+------------------------------------------------
+I'm from ARP!
+*** -> Received packet of length 98 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 4A:80:53:D3:05:C2
+	source: 12:BD:6E:09:B5:2E
+	type: 2048
+IP header:
+	version: 4
+	header length: 5
+	type of service: 0
+	length: 84
+	id: 45991
+	fragment flag: DF
+	fragment offset: 0
+	TTL: 64
+	protocol: 1
+	checksum: 21452
+	source: 10.0.1.100
+	destination: 172.64.3.10
+ICMP header:
+	type: 8
+	code: 0
+	checksum: 6137
+------------------------------------------------
+I'm from IP!
+Handle IP Packet! (TODO) 
+*** -> Received packet of length 98 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 4A:80:53:D3:05:C2
+	source: 12:BD:6E:09:B5:2E
+	type: 2048
+IP header:
+	version: 4
+	header length: 5
+	type of service: 0
+	length: 84
+	id: 45992
+	fragment flag: DF
+	fragment offset: 0
+	TTL: 64
+	protocol: 1
+	checksum: 21196
+	source: 10.0.1.100
+	destination: 172.64.3.10
+ICMP header:
+	type: 8
+	code: 0
+	checksum: 6815
+------------------------------------------------
+I'm from IP!
+Handle IP Packet! (TODO) 
+*** -> Received packet of length 98 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 4A:80:53:D3:05:C2
+	source: 12:BD:6E:09:B5:2E
+	type: 2048
+IP header:
+	version: 4
+	header length: 5
+	type of service: 0
+	length: 84
+	id: 45993
+	fragment flag: DF
+	fragment offset: 0
+	TTL: 64
+	protocol: 1
+	checksum: 20940
+	source: 10.0.1.100
+	destination: 172.64.3.10
+ICMP header:
+	type: 8
+	code: 0
+	checksum: 6104
+------------------------------------------------
+I'm from IP!
+Handle IP Packet! (TODO) 

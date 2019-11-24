@@ -1,12 +1,5 @@
 /*-----------------------------------------------------------------------------
- * file:  sr_rt.h 
- * date:  Mon Oct 07 03:53:53 PDT 2002  
- * Author: casado@stanford.edu
- *
- * Description:
- *
  * Methods and datastructures for handeling the routing table
- *
  *---------------------------------------------------------------------------*/
 
 #ifndef sr_RT_H
@@ -19,22 +12,21 @@
 #include <netinet/in.h>
 
 #include "sr_if.h"
+#include "sr_utils.h"
 
 /* ----------------------------------------------------------------------------
- * struct sr_rt
- *
- * Node in the routing table 
- *
+ * Node in the routing table.
  * -------------------------------------------------------------------------- */
-
-struct sr_rt
+typedef struct sr_rt
 {
     struct in_addr dest;
-    struct in_addr gw;
-    struct in_addr mask;
-    char   interface[sr_IFACE_NAMELEN];
-    struct sr_rt* next;
-};
+    struct in_addr mask; // dest and mask describe a dst network ID together
+    struct in_addr gw; // next hop's IP addr
+    char   interface[sr_IFACE_NAMELEN]; // through which interface can get to the next hop  
+    struct sr_rt* next; // next entry
+} RTableEntry;
+
+typedef struct sr_rt RTable;
 
 
 int sr_load_rt(struct sr_instance*,const char*);

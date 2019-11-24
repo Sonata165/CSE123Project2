@@ -1,28 +1,3 @@
-/*-----------------------------------------------------------------------------
- * File: sr_vns_comm.c
- * Date: Spring 2002
- * Authors: Guido Apanzeller, Vikram Vijayaraghaven, Martin Casado
- * Contact: casado@stanford.edu
- *
- * Based on many generations of sr clients including the original c client
- * and bert.
- *
- * 2003-Dec-03 09:00:52 AM :
- *   - bug sending packets read from client to sr_log_packet.  Packet was
- *     sent in network byte order ... expected host byte order.
- *     Reported by Matt Holliman & Sam Small. /mc
- *
- *  2004-Jan-29 07:09:28 PM
- *   - added check to handle signal interrupts on recv (for use with
- *     alarm(..) for timeouts.  Fixes are based on patch by
- *     Abhyudaya Chodisetti <sravanth@stanford.edu> /mc
- *
- *   2004-Jan-31 01:27:54 PM
- *    - William Chan (chanman@stanford.edu) submitted patch for UMR on
- *      sr_dump_packet(..)
- *
- *---------------------------------------------------------------------------*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -71,7 +46,6 @@ static void sr_session_closed_help()
  *
  *  0 on success
  *  something other than zero on error
- *
  *---------------------------------------------------------------------------*/
 int sr_connect_to_server(struct sr_instance* sr,unsigned short port,
                          char* server)
@@ -170,9 +144,7 @@ int sr_connect_to_server(struct sr_instance* sr,unsigned short port,
  *
  *
  * Read, from the server, the hardware information for the reserved host.
- *
  *---------------------------------------------------------------------------*/
-
 int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
 {
     int num_entries;
@@ -230,8 +202,11 @@ int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
     sr_print_if_list(sr);
 
     return num_entries;
-} /* -- sr_handle_hwinfo -- */
+}
 
+/**
+ * Scoop: Local
+ */
 int sr_handle_rtable(struct sr_instance* sr, c_rtable* rtable) {
     char fn[7+IDSIZE+1];
     FILE* fp;
@@ -250,6 +225,9 @@ int sr_handle_rtable(struct sr_instance* sr, c_rtable* rtable) {
     }
 }
 
+/**
+ * Scoop: Local
+ */
 int sr_handle_auth_request(struct sr_instance* sr, c_auth_request* req) {
 #define AUTH_KEY_LEN 64
 #define SHA1_LEN 20
@@ -310,6 +288,9 @@ int sr_handle_auth_request(struct sr_instance* sr, c_auth_request* req) {
     }
 }
 
+/**
+ * Scoop: Local
+ */
 int sr_handle_auth_status(struct sr_instance* sr, c_auth_status* status) {
     if(status->auth_ok)
         printf("successfully authenticated as %s\n", sr->user);
@@ -323,14 +304,15 @@ int sr_handle_auth_status(struct sr_instance* sr, c_auth_status* status) {
  * Scope: global
  *
  * Houses main while loop for communicating with the virtual router server.
- *
  *---------------------------------------------------------------------------*/
-
 int sr_read_from_server(struct sr_instance* sr /* borrowed */)
 {
     return sr_read_from_server_expect(sr, 0);
 }
 
+/**
+ * Scoop: Local
+ */
 int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expected_cmd)
 {
     int command, len;
@@ -511,9 +493,7 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
  * Scope: Local
  *
  * Make sure ethernet addresses are sane so we don't muck uo the system.
- *
  *----------------------------------------------------------------------------*/
-
 static int
 sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
                                 uint8_t* buf, /* borrowed */
@@ -535,7 +515,7 @@ sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
         return 0;
     }
 
-    if ( memcmp( ether_hdr->ether_shost, iface->addr, ETHER_ADDR_LEN) != 0 ){
+    if ( memcmp( ether_hdr->src_mac_addr, iface->addr, ETHER_ADDR_LEN) != 0 ){
         fprintf( stderr, "** Error, source address does not match interface\n");
         return 0;
     }
@@ -548,24 +528,26 @@ sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
 
     return 1;
 
-} /* -- sr_ether_addrs_match_interface -- */
+}
 
 /*-----------------------------------------------------------------------------
- * Method: sr_send_packet(..)
  * Scope: Global
  *
  * Send a packet (ethernet header included!) of length 'len' to the server
  * to be injected onto the wire.
- *
+ * Parameters:
+ *   sr - a router.
+ *   buf - packet to be sent.
+ *   len - packet length
+ *   iface - interface name 
  *---------------------------------------------------------------------------*/
-
 int sr_send_packet(struct sr_instance* sr /* borrowed */,
-                         uint8_t* buf /* borrowed */ ,
-                         unsigned int len,
-                         const char* iface /* borrowed */)
+                    uint8_t* buf /* borrowed */,
+                    unsigned int len,
+                    const char* iface /* borrowed */)
 {
-    c_packet_header *sr_pkt;
-    unsigned int total_len =  len + (sizeof(c_packet_header));
+    c_packet_header* sr_pkt;
+    unsigned int total_len = len + (sizeof(c_packet_header));
 
     /* REQUIRES */
     assert(sr);
@@ -573,31 +555,30 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     assert(iface);
 
     /* don't waste my time ... */
-    if ( len < sizeof(struct sr_ethernet_hdr) ){
-        fprintf(stderr , "** Error: packet is wayy to short \n");
+    if (len < sizeof(struct sr_ethernet_hdr)) {
+        fprintf(stderr, "** Error: packet is wayy to short \n");
         return -1;
     }
 
     /* Create packet */
-    sr_pkt = (c_packet_header *)malloc(len +
-            sizeof(c_packet_header));
+    sr_pkt = (c_packet_header*)malloc(len + sizeof(c_packet_header));
     assert(sr_pkt);
-    sr_pkt->mLen  = htonl(total_len);
+    sr_pkt->mLen = htonl(total_len);
     sr_pkt->mType = htonl(VNSPACKET);
-    strncpy(sr_pkt->mInterfaceName,iface,16);
+    strncpy(sr_pkt->mInterfaceName, iface, 16);
     memcpy(((uint8_t*)sr_pkt) + sizeof(c_packet_header),
-            buf,len);
+        buf, len);
 
     /* -- log packet -- */
-    sr_log_packet(sr,buf,len);
+    sr_log_packet(sr, buf, len);
 
-    if ( ! sr_ether_addrs_match_interface( sr, buf, iface) ){
-        fprintf( stderr, "*** Error: problem with ethernet header, check log\n");
-        free ( sr_pkt );
+    if (!sr_ether_addrs_match_interface(sr, buf, iface)) {
+        fprintf(stderr, "*** Error: problem with ethernet header, check log\n");
+        free(sr_pkt);
         return -1;
     }
 
-    if( write(sr->sockfd, sr_pkt, total_len) < total_len ){
+    if (write(sr->sockfd, sr_pkt, total_len) < total_len) {
         fprintf(stderr, "Error writing packet\n");
         free(sr_pkt);
         return -1;
@@ -609,11 +590,8 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
 } /* -- sr_send_packet -- */
 
 /*-----------------------------------------------------------------------------
- * Method: sr_log_packet()
  * Scope: Local
- *
  *---------------------------------------------------------------------------*/
-
 void sr_log_packet(struct sr_instance* sr, uint8_t* buf, int len )
 {
     struct pcap_pkthdr h;
@@ -636,11 +614,8 @@ void sr_log_packet(struct sr_instance* sr, uint8_t* buf, int len )
 } /* -- sr_log_packet -- */
 
 /*-----------------------------------------------------------------------------
- * Method: sr_arp_req_not_for_us()
  * Scope: Local
- *
  *---------------------------------------------------------------------------*/
-
 int  sr_arp_req_not_for_us(struct sr_instance* sr,
                            uint8_t * packet /* lent */,
                            unsigned int len,
@@ -659,9 +634,9 @@ int  sr_arp_req_not_for_us(struct sr_instance* sr,
     a_hdr = (struct sr_arp_hdr*)(packet + sizeof(struct sr_ethernet_hdr));
 
     if ( (e_hdr->ether_type == htons(ethertype_arp)) &&
-            (a_hdr->ar_op      == htons(arp_op_request))   &&
-            (a_hdr->ar_tip     != iface->ip ) )
+            (a_hdr->arp_option      == htons(arp_op_request))   &&
+            (a_hdr->dst_ip_addr     != iface->ip ) )
     { return 1; }
 
     return 0;
-} /* -- sr_arp_req_not_for_us -- */
+}

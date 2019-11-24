@@ -10,17 +10,94 @@
 #include "sr_router.h"
 #include "sr_if.h"
 #include "sr_protocol.h"
+#include "sr_utils.h"
 
-/* 
-  This function gets called every second. For each request sent out, we keep
-  checking whether we should resend an request or destroy the arp request.
-  See the comments in the header file for an idea of what it should look like.
-*/
-void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
-    /* Fill this in */
+/**
+ * This function gets called every second. For each request sent out, we keep
+ * checking whether we should resend an request or destroy the arp request.
+ * 
+ * ARP requests are sent every second until we send 5 ARP requests, then we send 
+ * ICMP host unreachable back to all packets waiting on this ARP request. 
+ * 
+ * void sr_arpcache_sweepreqs(struct sr_instance *sr):
+ *     for each request on sr->cache.requests:
+ *         send_arp_request(request)
+ */
+void sr_arpcache_sweepreqs(Router* sr) 
+{ 
+    ArpReq* req;
+    for (req = sr->cache.requests; req != NULL; req = req->next) {
+        fprintf(stderr, "Remaining ARP request in queue: ");
+        print_addr_ip_int(req->ip);
+        printf("\n");
+
+        send_arp_request(sr, req);
+    }
 }
 
-/* You should not need to touch the rest of this code. */
+/**
+ * Send ARP requests.
+ * Only send after 1s from last send time, and times of sent < 5.
+ *
+ * HINT:
+ * function send_arp_request(req):
+ *     if difftime(now, req->sent) > 1.0
+ *          if req->times_sent >= 5:
+ *              send icmp host unreachable to source addr of all pkts waiting
+ *                  on this request
+ *              arpreq_destroy(req)
+ *          else:
+ *              send arp request
+ *              req->sent = now
+ *              req->times_sent++
+ */
+void send_arp_request(Router* sr, ArpReq* req)
+{
+    time_t now = time(NULL);
+    if (difftime(now, req->sent) <= 1.0){
+        return;
+    }
+
+    if (req->times_sent >= 5){
+        // TODO: Send ICMP
+        sr_arpreq_destroy(&sr->cache, req);
+    }
+    else {
+        Interface* interface = sr_get_interface(sr, req->packets->iface);
+        FrameAndLen arp_req = construct_arp_request(interface->addr, 
+                interface->ip, req->ip);
+        sr_send_packet(sr, arp_req.frame, arp_req.len, interface->name);
+    }
+    
+}
+
+/**
+ * Handle ARP reply.
+ * The ARP reply processing code should move entries from the ARP request
+ * queue to the ARP cache:
+ *
+ * # When servicing an arp reply that gives us an IP->MAC mapping
+ * req = arpcache_insert(ip, mac)
+ * if req:
+ *     send all packets on the req->packets linked list
+ *     arpreq_destroy(req)
+ */
+void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,
+    unsigned int len, char* interface_name)
+{
+    ArpHeader* arp_hdr = (ArpHeader*)(packet + sizeof(EthernetHeader));
+    ArpReq* req = sr_arpcache_insert(&sr->cache, arp_hdr->src_mac_addr, arp_hdr->src_ip_addr);
+    PacketInReq* pkt;
+    if (req != NULL){
+        for (pkt = req->packets; pkt != NULL; pkt = pkt->next){
+            sr_send_packet(sr, pkt->buf, pkt->len, pkt->iface);
+        }
+        sr_arpreq_destroy(&sr->cache, req);
+    }
+}
+
+
+/*------------------DON'T TOUCH CODE BELOW-------------------------*/
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order.
    You must free the returned structure if it is not NULL. */
@@ -48,12 +125,22 @@ struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, uint32_t ip) {
     return copy;
 }
 
-/* Adds an ARP request to the ARP request queue. If the request is already on
-   the queue, adds the packet to the linked list of packets for this sr_arpreq
-   that corresponds to this ARP request. You should free the passed *packet.
-   
-   A pointer to the ARP request is returned; it should not be freed. The caller
-   can remove the ARP request from the queue by calling sr_arpreq_destroy. */
+/**
+ * Adds an ARP request to the ARP request queue. If the request is already on
+ * the queue, adds the packet to the linked list of packets for this sr_arpreq
+ * that corresponds to this ARP request. 
+ * The packet argument should not be freed by the caller.
+ * 
+ * Parameters:
+ *   cache - an ARP cache
+ *   ip - whose MAC we want to find
+ *   packet - the packet we want to find its dst's MAC addr
+ *   packet_len - the length of packet
+ *   iface - the name of outgoing interface
+ * Returns:
+ *   A pointer to the ARP request is returned; it should be freed. The caller
+ *   can remove the ARP request from the queue by calling sr_arpreq_destroy. 
+ */
 struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
                                        uint32_t ip,
                                        uint8_t *packet,           /* borrowed */
@@ -95,11 +182,20 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
     return req;
 }
 
-/* This method performs two functions:
-   1) Looks up this IP in the request queue. If it is found, returns a pointer
-      to the sr_arpreq with this IP. Otherwise, returns NULL.
-   2) Inserts this IP to MAC mapping in the cache, and marks it valid. */
-struct sr_arpreq *sr_arpcache_insert(struct sr_arpcache *cache,
+/** 
+ * This method performs two works when receiving an ARP reply:
+ * 1) Looks up this IP in the request queue. If it is found, returns a pointer
+ *    to the sr_arpreq with this IP. Otherwise, returns NULL.
+ * 2) Inserts this IP to MAC mapping in the cache, and marks it valid.
+ * 
+ * Parameters:
+ *   cache - the ARP cache
+ *   mac - the mac addr we just got replied
+ *   ip - the ip of the mac addr
+ * Returns:
+ *   The ArpReq who wants to use this new ARP entry.
+ */
+struct sr_arpreq* sr_arpcache_insert(struct sr_arpcache *cache,
                                      unsigned char *mac,
                                      uint32_t ip)
 {
@@ -140,8 +236,10 @@ struct sr_arpreq *sr_arpcache_insert(struct sr_arpcache *cache,
     return req;
 }
 
-/* Frees all memory associated with this arp request entry. If this arp request
-   entry is on the arp request queue, it is removed from the queue. */
+/**
+ * Frees all memory associated with this arp request entry. If this arp request
+ * entry is on the arp request queue, it is removed from the queue. 
+ */
 void sr_arpreq_destroy(struct sr_arpcache *cache, struct sr_arpreq *entry) {
     pthread_mutex_lock(&(cache->lock));
     

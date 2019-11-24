@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-
 #include "sr_if.h"
 #include "sr_rt.h"
 #include "sr_router.h"
@@ -22,9 +21,7 @@
  * Scope:  Global
  *
  * Initialize the routing subsystem
- *
  *---------------------------------------------------------------------*/
-
 void sr_init(struct sr_instance* sr)
 {
     /* REQUIRES */
@@ -66,43 +63,115 @@ void sr_init(struct sr_instance* sr)
  * the method call.
  */
 void sr_handlepacket(struct sr_instance* sr, uint8_t* packet,
-    unsigned int len, char* interface)
+    unsigned int len, char* interface_name)
 {
     /* REQUIRES */
     assert(sr);
     assert(packet);
-    assert(interface);
+    assert(interface_name);
 
     printf("*** -> Received packet of length %d \n", len);
 
     /* fill in code here */
+    fprintf(stderr, "*** -> Received packet of length %d \n", len);
     print_hdrs(packet, len);
-    EthernetHeader* eth_hdr = (EthernetHeader*)packet;
-    uint16_t type = ntohs(eth_hdr->ether_type);
+    uint16_t type = ethertype(packet);
     if (type == ethertype_arp) {
-        printf("I'm from ARP!\n");
-        handle_arp_packet(sr, packet, len, interface);
+        handle_arp_packet(sr, packet, len, interface_name);
     }
     else if (type == ethertype_ip) {
-        printf("I'm from IP!\n");
-        handle_ip_packet(sr, packet, len, interface);
+        handle_ip_packet(sr, packet, len, interface_name);
     }
     else {
         fprintf(stderr, "Invalid packet type: %x\n", type);
     }
 }
 
+/**
+ * Handle ARP packets.
+ * Parameters:
+ *   sr - a router
+ *   packet - a pointer pointing to the input Ethernet Frame
+ *   len - the length of the Frame
+ *   interface - incoming interface, where the Frame come from
+ */
 void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,
-    unsigned int len, char* interface) {
+    unsigned int len, char* interface_name)
+{
     /* Check length */
-    int min_length = sizeof(EthernetHeader) + sizeof(ArpHeader);
+    int min_length = sizeof(EthernetHeader);
     if (len < min_length) {
-        fprintf("Invalid ARP length: %d\n", len);
-        continue;
+        fprintf(stderr, "Invalid Ethernet header (ARP) length: %d\n", len);
+        return ;
+    }
+
+    /* TODO Try to save MAC addr of the src of the packet */
+    EthernetHeader* eth_hdr = (EthernetHeader*)packet;
+    unsigned char new_mac[ETHER_ADDR_LEN]; // MAC of the src of the incoming packet.
+    memcpy(new_mac, eth_hdr->src_mac_addr, ETHER_ADDR_LEN);
+    //TODO
+
+    /* Get MAC addr of this interface */
+    Interface* interface = sr_get_interface(sr, interface_name);
+    unsigned char my_addr[ETHER_ADDR_LEN];
+    memcpy(my_addr, interface->addr, ETHER_ADDR_LEN);
+    
+    /* Get ARP type (arp option) */
+    min_length += sizeof(ArpHeader);
+    if (len < min_length) {
+        fprintf(stderr, "Invalid ARP header length: %d\n", len);
+        return ;
+    }
+    ArpHeader* arp_hdr = (ArpHeader*)(packet + sizeof(EthernetHeader));
+    uint16_t arp_type = get_arp_type(arp_hdr);
+
+    /* CAUTION! I didn't construct new packets here, which MAY lead to problems! */
+    if (arp_type == arp_op_request){
+        /* Modify ARP header */
+        arp_hdr->arp_option = htons(arp_op_reply);
+        copy_eth_addr(arp_hdr->src_mac_addr, my_addr);
+        copy_eth_addr(arp_hdr->dst_mac_addr, new_mac);
+        arp_hdr->dst_ip_addr = arp_hdr->src_ip_addr;
+        arp_hdr->src_ip_addr = interface->ip;
+
+        /* Modify Ethernet header */
+        copy_eth_addr(eth_hdr->src_mac_addr, my_addr);
+        copy_eth_addr(eth_hdr->dst_mac_addr, new_mac);
+
+        // print_hdrs(packet, len);
+        /* Send back */
+        sr_send_packet(sr, packet, len, interface_name);
+    }
+    else if (arp_type == arp_op_reply){
+        handle_arp_reply(sr, packet, len, interface_name);
+    }
+    else {
+        fprintf(stderr, "Invalid ARP op code: %d\n", arp_type);
     }
 }
 
+/**
+ * Handle IP packet.
+ */
 void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,
-    unsigned int len, char* interface) {
+        unsigned int len, char* interface_name)
+{
+    fprintf(stderr, "Handle IP Packet! (TODO) \n");
+    IpHeader* ip_hdr = (IpHeader*)(packet + sizeof(EthernetHeader));
 
+    Interface* interface = sr_get_interface(sr, interface_name);
+    if (ip_hdr->ip_dst == interface->ip){ // The packet is for this router
+        if (ip_hdr->ip_pro == ip_protocol_icmp){ // If it's a ICMP packet
+            IcmpHeader* icmp_hdr = (IcmpHeader*)(packet + sizeof(EthernetHeader) + sizeof(IpHeader));
+            if (icmp_hdr->icmp_type == ECHO_MSG_TYPE){ // echo message
+                // TODO send echo reply!
+            }
+            else if (icmp_hdr->icmp_type == ECHO_REPLY_TYPE){ // echo reply
+                fprintf(stderr, "shit!\n");
+            }
+        }
+    }
+    else { // Not for this router, need forwarding.
+        printf("\n");
+    }
 }

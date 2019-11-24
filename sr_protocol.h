@@ -39,6 +39,7 @@
 
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 
 
 #ifndef IP_MAXPACKET
@@ -79,7 +80,11 @@
 /* Structure of a type11 ICMP header
  */
 struct sr_icmp_t11_hdr {
+#define ECHO_MSG_TYPE 8
+#define ECHO_REPLY_TYPE 0
     uint8_t icmp_type;
+#define ECHO_MSG_CODE 0
+#define ECHO_REPLY_CODE 0
     uint8_t icmp_code;
     uint16_t icmp_sum;
     uint32_t unused;
@@ -103,6 +108,8 @@ struct sr_ip_hdr {
 #else
 #error "Byte ordering ot specified "
 #endif
+
+#define IP_ADDR_LEN 4
     uint8_t ip_tos; /* type of service */
     uint16_t ip_len; /* total length */
     uint16_t ip_id; /* identification */
@@ -112,7 +119,7 @@ struct sr_ip_hdr {
 #define IP_MF 0x2000 /* more fragments flag */
 #define IP_OFFMASK 0x1fff /* mask for fragmenting bits */
     uint8_t ip_ttl; /* time to live */
-    uint8_t ip_p; /* protocol */
+    uint8_t ip_pro; /* protocol */
     uint16_t ip_sum; /* checksum */
     uint32_t ip_src, ip_dst; /* source and dest address */
 } __attribute__((packed));
@@ -130,8 +137,8 @@ struct sr_ethernet_hdr {
 #ifndef ETHER_ADDR_LEN
 #define ETHER_ADDR_LEN 6
 #endif
-    uint8_t ether_dhost[ETHER_ADDR_LEN]; /* destination ethernet address */
-    uint8_t ether_shost[ETHER_ADDR_LEN]; /* source ethernet address */
+    uint8_t dst_mac_addr[ETHER_ADDR_LEN]; /* destination ethernet address */
+    uint8_t src_mac_addr[ETHER_ADDR_LEN]; /* source ethernet address */
     uint16_t ether_type; /* packet type ID */
 } __attribute__((packed));
 
@@ -143,7 +150,7 @@ enum sr_ip_protocol {
 };
 
 /**
- * The type of IP packet will be showed in Ethernet header.
+ * Code for protocol type
  * Codes below describe to different IP packet, and will be added to ethernet header.
  */
 enum sr_ethertype {
@@ -151,29 +158,40 @@ enum sr_ethertype {
     ethertype_ip = 0x0800,
 };
 
+/**
+ * Code for arp_option in ARP header.
+ */
 enum sr_arp_opcode {
     arp_op_request = 0x0001,
     arp_op_reply = 0x0002,
 };
 
+/**
+ * Code for ARP hardware type.
+ */
 enum sr_arp_hrd_fmt {
     arp_hrd_ethernet = 0x0001,
 };
 
 struct sr_arp_hdr {
-    unsigned short ar_hrd; /* format of hardware address   */
-    unsigned short ar_pro; /* format of protocol address   */
-    unsigned char ar_hln; /* length of hardware address   */
-    unsigned char ar_pln; /* length of protocol address   */
-    unsigned short ar_op; /* ARP opcode (command)         */
-    unsigned char ar_sha[ETHER_ADDR_LEN]; /* sender hardware address      */
-    uint32_t ar_sip; /* sender IP address            */
-    unsigned char ar_tha[ETHER_ADDR_LEN]; /* target hardware address      */
-    uint32_t ar_tip; /* target IP address            */
+    uint16_t hardware_type; /* hardware type */
+    uint16_t protocol_type; /* protocol type, IP or ARP */
+    unsigned char h_addr_len; /* length of hardware address   */
+    unsigned char p_addr_len; /* length of protocol address   */
+    uint16_t arp_option; /* ARP opcode (command)         */
+    unsigned char src_mac_addr[ETHER_ADDR_LEN]; /* sender hardware address      */
+    uint32_t src_ip_addr; /* sender IP address            */
+    unsigned char dst_mac_addr[ETHER_ADDR_LEN]; /* target hardware address      */
+    uint32_t dst_ip_addr; /* target IP address            */
 } __attribute__((packed));
 
 /* ARP header */
 typedef struct sr_arp_hdr ArpHeader;
+
+typedef struct FrameAndLen_t {
+    uint8_t* frame; // a raw Ethernet frame
+    uint8_t len; // the total length of the frame
+} FrameAndLen;
 
 #define sr_IFACE_NAMELEN 32
 
