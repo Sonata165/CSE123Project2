@@ -25,6 +25,8 @@
 #include "sr_if.h"
 #include "sr_router.h"
 
+typedef struct sr_if Interface;
+
 /*--------------------------------------------------------------------- 
  * Method: sr_get_interface
  * Scope: Global
@@ -187,9 +189,16 @@ void sr_print_if(struct sr_if* iface)
 
     ip_addr.s_addr = iface->ip;
 
-    Debug("%s\tHWaddr",iface->name);
+    Debug("%s\tHWaddr: ",iface->name);
     DebugMAC(iface->addr);
     Debug("\n");
     Debug("\tinet addr %s\n",inet_ntoa(ip_addr));
 } /* -- sr_print_if -- */
 
+
+/* -----------Getter-------------- */
+uint32_t if_get_ip(Interface* iface)
+{ return ntohl(iface->ip); }
+
+char* if_get_name(Interface* iface)
+{ return iface->name; }

@@ -4,50 +4,32 @@
 #include "sr_protocol.h"
 #include "sr_utils.h"
 
-uint16_t cksum(const void* _data, int len)
-{
-    const uint8_t* data = _data;
-    uint32_t sum;
-
-    for (sum = 0; len >= 2; data += 2, len -= 2)
-        sum += data[0] << 8 | data[1];
-    if (len > 0)
-        sum += data[0] << 8;
-    while (sum > 0xffff)
-        sum = (sum >> 16) + (sum & 0xffff);
-    sum = htons(~sum);
-    return sum ? sum : 0xffff;
-}
-
-uint16_t ethertype(uint8_t* buf)
-{
-    EthernetHeader* ehdr = (EthernetHeader*)buf;
-    return ntohs(ehdr->ether_type);
-}
-
-uint16_t get_arp_type(ArpHeader* hdr)
-{
-    return ntohs(hdr->arp_option);
-}
-
 /**
- * Copy a Ethernet address from src to dst.
+ * Copy a Ethernet mac address from src to dst.
  * Parameters:
- *   dst
- *   src
+ *   dst, can be NULL
+ *   src, can be NULL
  */
-void copy_eth_addr(unsigned char dst[], unsigned char src[])
+void eth_copy_addr(unsigned char* dst, unsigned char* src)
 {
-    memcpy(dst, src, ETHER_ADDR_LEN);
+    if (src != NULL)
+        memcpy(dst, src, ETHER_ADDR_LEN);
+    else 
+        memset(dst, 0xFF, ETHER_ADDR_LEN);
 }
 
 /**
- * Get the protocol used by this IP packet.
+ * Copy a ArpHeader mac address from src to dst.
+ * Parameters:
+ *   dst, can be NULL
+ *   src, can be NULL
  */
-uint8_t ip_protocol(uint8_t* buf)
+void arp_copy_mac(unsigned char* dst, unsigned char* src)
 {
-    IpHeader* iphdr = (IpHeader*)(buf);
-    return iphdr->ip_pro;
+    if (src != NULL)
+        memcpy(dst, src, ETHER_ADDR_LEN);
+    else 
+        memset(dst, 0, ETHER_ADDR_LEN);
 }
 
 /**
@@ -68,6 +50,8 @@ void print_addr_eth(uint8_t* addr)
 
 /**
  * Prints out IP address as a string from in_addr 
+ * Parameters
+ *   address - IP addr, type: struct in_addr, host byte order
  */
 void print_addr_ip(struct in_addr address)
 {
@@ -80,6 +64,8 @@ void print_addr_ip(struct in_addr address)
 
 /**
  * Prints out IP address from integer value
+ * Parameters:
+ *   ip - IP addr, host byte order.
  */
 void print_addr_ip_int(uint32_t ip)
 {
@@ -93,12 +79,14 @@ void print_addr_ip_int(uint32_t ip)
     fprintf(stderr, "%d\n", curOctet);
 }
 
+
+
 /**
  * Convert struct in_addr to uint32_t.
  * Parameters:
- *   addr - the uint32_t form of IP addr
+ *   addr - struct in_addr form of IP addr
  * Returns:
- *   struct in_addr form of IP addr
+ *   the uint32_t form of IP addr, HOST BYTE ORDER
  *   0 if failed.
  */
 uint32_t in_addr_to_ip(struct in_addr addr)
@@ -172,7 +160,7 @@ void print_hdr_ip(uint8_t* buf)
  */
 void print_hdr_icmp(uint8_t* buf)
 {
-    IcmpHeader* icmp_hdr = (IcmpHeader*)(buf);
+    IcmpHeaderT11* icmp_hdr = (IcmpHeaderT11*)(buf);
     fprintf(stderr, "ICMP header:\n");
     fprintf(stderr, "\ttype: %d\n", icmp_hdr->icmp_type);
     fprintf(stderr, "\tcode: %d\n", icmp_hdr->icmp_code);
@@ -217,7 +205,8 @@ void print_hdrs(uint8_t* buf, uint32_t length)
         return;
     }
 
-    uint16_t ethtype = ethertype(buf);
+    EthernetHeader* eth_hdr = (EthernetHeader*)buf;
+    uint16_t ethtype = eth_get_ethertype(eth_hdr);
     print_hdr_eth(buf);
 
     if (ethtype == ethertype_ip) { /* IP */
@@ -227,8 +216,9 @@ void print_hdrs(uint8_t* buf, uint32_t length)
             return;
         }
 
+        IpHeader* ip_hdr = (IpHeader*)(buf + sizeof(EthernetHeader));
         print_hdr_ip(buf + sizeof(EthernetHeader));
-        uint8_t ip_proto = ip_protocol(buf + sizeof(EthernetHeader));
+        uint8_t ip_proto = ip_get_pro(ip_hdr);
 
         if (ip_proto == ip_protocol_icmp) { /* ICMP */
             minlength += 4;
@@ -250,41 +240,255 @@ void print_hdrs(uint8_t* buf, uint32_t length)
 }
 
 /**
- * Construct an ARP request according to information given.
- * An ARP request packet only have headers, no payload.
- * 
+ * Set the value of ARP's field.
  * Parameters:
- *   src_mac_addr - the MAC address of the one who want's to send ARP request
- *   src_ip_addr - the IP address of the one who want's to send ARP request
- *   dst_ip_addr - the IP address of the one who you want to know its MAC addr
- * Returns:
- *   (frame, length)
+ *   hdr - an EthernetHeader
+ *   src_mac - MAC addr of src or NULL
+ *   dst_mac - MAC addr of dst or NULL
+ *   ethertype - ethertype, HOST BYTE ORDER
  */
-FrameAndLen construct_arp_request(unsigned char src_mac_addr[],
-                                uint32_t src_ip_addr,
-                                uint32_t dst_ip_addr)
+void arp_hdr_set_value(ArpHeader* arp_hdr, uint16_t protocol_type, uint16_t option, 
+        unsigned char src_mac_addr[], uint32_t src_ip_addr, unsigned char dst_mac_addr[], 
+        uint32_t dst_ip_addr)
 {
-    uint8_t len = sizeof(EthernetHeader) + sizeof(ArpHeader);
-    uint8_t* buf = (uint8_t*)malloc(len);
-
-    ArpHeader* arp_hdr = (ArpHeader*)(buf + sizeof(EthernetHeader));
-    arp_hdr->hardware_type = arp_hrd_ethernet;
-    arp_hdr->protocol_type = ethertype_ip; // CAUSION!
+    arp_hdr->hardware_type = htons(arp_hrd_ethernet);
+    arp_hdr->protocol_type = htons(protocol_type); // CAUSION!
     arp_hdr->h_addr_len = ETHER_ADDR_LEN;
     arp_hdr->p_addr_len = IP_ADDR_LEN;
-    arp_hdr->arp_option = arp_op_request;
-    copy_eth_addr(arp_hdr->src_mac_addr, src_mac_addr);
-    arp_hdr->src_ip_addr = src_ip_addr;
-    memset(arp_hdr->dst_mac_addr, 0, sizeof(ETHER_ADDR_LEN));
-    arp_hdr->dst_ip_addr = dst_ip_addr;
-
-    EthernetHeader* eth_hdr = (EthernetHeader*)buf;
-    memset(eth_hdr->dst_mac_addr, 0xFF, sizeof(ETHER_ADDR_LEN));
-    copy_eth_addr(eth_hdr->src_mac_addr, src_mac_addr);
-    eth_hdr->ether_type = ethertype_arp; // CAUSION!
-
-    FrameAndLen ret;
-    ret.frame = buf;
-    ret.len = len;
-    return ret;
+    arp_hdr->arp_option = htons(option);
+    arp_copy_mac(arp_hdr->src_mac_addr, src_mac_addr);
+    arp_hdr->src_ip_addr = htonl(src_ip_addr);
+    arp_copy_mac(arp_hdr->dst_mac_addr, dst_mac_addr);
+    arp_hdr->dst_ip_addr = htonl(dst_ip_addr);
 }
+
+/**
+ * Perform IP checksum algorithm.
+ */
+uint16_t ip_cksum(IpHeader* hdr)
+{
+    uint16_t* buf = (uint16_t*)hdr;
+    uint32_t  sum = 0;
+    for (int i = 1; i <= 10; i++){
+        if (i == 6){
+            buf += 1;
+        }
+        else {
+            sum += *buf++;
+            if (sum & 0xFFFF0000){
+                sum &= 0xFFFF;
+                sum++;
+            }
+        }
+    }
+    return ~(sum & 0xFFFF);
+}
+
+/**
+ * Set field value for ICMP Type 11 (Time Exceeded) header.
+ * Parameters:
+ *   hdr - a ICMP header
+ *   ip_hdr - the IP header who have problem
+ *   data - the payload of error IP packet
+ */
+void icmp_t11_hdr_set_value(IcmpHeaderT11* hdr, IpHeader* ip_hdr, uint8_t* data)
+{
+    hdr->icmp_type = TTL_TYPE;
+    hdr->icmp_code = TTL_CODE;
+    hdr->unused = 0;
+    memcpy(hdr->data, ip_hdr, IP_HDR_SIZE);
+    memcpy(hdr->data+IP_HDR_SIZE, data, 8);
+
+    hdr->icmp_sum = icmp_cksum(hdr);
+}
+
+/**
+ * Set field value for ICMP t8 header.
+ * Parameters:
+ *   hdr - a ICMP type 8 header
+ *   type - ICMP TYPE
+ *   identifier - identifier, NETWORK BYTE ORDER
+ *   seqnum - sequence number, NETWORK BYTE ORDER
+ */
+void icmp_t8_hdr_set_value(IcmpHeaderT8* hdr, uint32_t len, uint8_t type, uint16_t identifier, 
+        uint16_t seqnum)
+{
+    hdr->icmp_type = type;
+    hdr->icmp_code = ECHO_CODE;
+    hdr->icmp_identifier = htons(identifier);
+    hdr->icmp_seqnum = htons(seqnum);
+
+    hdr->icmp_sum = icmp_t8_cksum(hdr, len);
+}
+
+/**
+ * Set field value for IP header.
+ * Parameters (ALL HOST BYTE ORDER):
+ *   hdr - a IP header
+ *   ver - IP version, host order
+ *   hl - header length, host order
+ *   tos - type of service
+ *   len - total length, host order
+ *   id - IP id, host order
+ *   off - offset field, host order
+ *   ttl - time to live
+ *   pro - protocol
+ *   src - source IP
+ *   dst - destination IP
+ * Returns:
+ *   An ICMP header whose value is set to what were provided.
+ */
+IpHeader* ip_hdr_set_value(IpHeader* hdr, uint32_t ver, uint32_t hl, uint8_t tos, 
+        uint16_t len, uint16_t id, uint16_t off, uint8_t ttl, uint8_t pro, uint32_t src, uint32_t dst)
+{
+    hdr->ip_v = ver;
+    hdr->ip_hl = hl;
+    hdr->ip_tos = tos;
+    hdr->ip_len = htons(len);
+    hdr->ip_id = htons(id);
+    hdr->ip_off = htons(off);
+    hdr->ip_ttl = ttl;
+    hdr->ip_pro = pro;
+    hdr->ip_src = htonl(src);
+    hdr->ip_dst = htonl(dst);
+    
+    hdr->ip_sum = ip_cksum(hdr);
+
+    return hdr;
+}
+
+/**
+ * Perform IP checksum algorithm for ICMP Type 3 or Type 11 header.
+ */
+uint16_t icmp_cksum(void* hdr)
+{
+    uint16_t* buf = (uint16_t*)hdr;
+    uint32_t  sum = 0;
+    for (int i = 1; i <= 18; i++){
+        if (i == 2){
+            buf += 1;
+        }
+        else {
+            sum += *buf++;
+            if (sum & 0xFFFF0000){
+                sum &= 0xFFFF;
+                sum++;
+            }
+        }
+    }
+    return ~(sum & 0xFFFF);
+}
+
+uint16_t icmp_t8_cksum(IcmpHeaderT8* hdr, uint32_t len)
+{
+    uint16_t* buf = (uint16_t*)hdr;
+    uint32_t  sum = 0;
+    for (int i = 1; i <= len/2; i++){
+        if (i == 2){
+            buf += 1;
+        }
+        else {
+            sum += *buf++;
+            if (sum & 0xFFFF0000){
+                sum &= 0xFFFF;
+                sum++;
+            }
+        }
+    }
+    return ~(sum & 0xFFFF);
+}
+
+/**
+ * Set the value of EthernetHeader's field.
+ * Parameters:
+ *   hdr - an EthernetHeader
+ *   src_mac - MAC addr of src or NULL
+ *   dst_mac - MAC addr of dst or NULL
+ *   ethertype - ethertype, HOST BYTE ORDER
+ */
+void eth_hdr_set_value(EthernetHeader* hdr, uint8_t* src_mac, uint8_t* dst_mac, uint16_t ethertype)
+{
+    eth_copy_addr(hdr->src_mac_addr, src_mac);
+    eth_copy_addr(hdr->dst_mac_addr, dst_mac);
+    hdr->ether_type = htons(ethertype);
+}
+
+/**
+ * Set the value for ICMP Type3 header.
+ * Parameters:
+ *   hdr - an ICMP type3 header.
+ *   code - the ICMP code.
+ *   ip_hdr - the IP header of original IP Packet
+ *   data - a pointer ponts to the first byte of 'Data' of Original Datagram
+ */
+void icmp_t3_hdr_set_value(IcmpHeaderT3* hdr, uint8_t code, IpHeader* ip_hdr, uint8_t* data)
+{
+    hdr->icmp_type = DST_UNREACHABLE_TYPE;
+    hdr->icmp_code = code;
+    hdr->unused = 0;
+    memcpy(hdr->data, ip_hdr, IP_HDR_SIZE);
+    memcpy(hdr->data+IP_HDR_SIZE, data, 8);
+
+    hdr->icmp_sum = icmp_cksum(hdr);
+}
+
+
+
+/* -------------ARP Getter---------------- */
+
+uint16_t arp_get_option(ArpHeader* hdr)
+{ return ntohs(hdr->arp_option); }
+
+/* -------------ICMP Getter---------------- */
+
+uint16_t icmp_t8_get_identifier(IcmpHeaderT8* hdr)
+{ return ntohs(hdr->icmp_identifier); }
+
+uint16_t icmp_t8_get_seqnum(IcmpHeaderT8* hdr)
+{ return ntohs(hdr->icmp_seqnum); }
+
+/* --------IpHeader Getter---------- */
+
+uint32_t ip_get_hl(IpHeader* hdr)
+{ return hdr->ip_hl; }
+
+uint32_t ip_get_v(IpHeader* hdr)
+{ return hdr->ip_v; }
+
+uint8_t ip_get_tos(IpHeader* hdr)
+{ return hdr->ip_tos; }
+
+uint16_t ip_get_len(IpHeader* hdr)
+{ return ntohs(hdr->ip_len); }
+
+uint16_t ip_get_id(IpHeader* hdr)
+{ return ntohs(hdr->ip_id); }
+
+uint16_t ip_get_off(IpHeader* hdr)
+{ return ntohs(hdr->ip_off); }
+
+uint8_t ip_get_ttl(IpHeader* hdr)
+{ return hdr->ip_ttl; }
+
+uint8_t ip_get_pro(IpHeader* hdr)
+{ return hdr->ip_pro; }
+
+uint16_t ip_get_sum(IpHeader* hdr)
+{ return hdr->ip_sum; }
+
+uint32_t ip_get_src(IpHeader* hdr)
+{ return ntohl(hdr->ip_src); }
+
+uint32_t ip_get_dst(IpHeader* hdr)
+{ return ntohl(hdr->ip_dst); }
+
+/* ---------------EthernetHeader getter-------------- */
+
+uint8_t* eth_get_src(EthernetHeader* hdr)
+{ return hdr->src_mac_addr; }
+
+uint8_t* eth_get_dst(EthernetHeader* hdr)
+{ return hdr->dst_mac_addr; }
+
+uint16_t eth_get_ethertype(EthernetHeader* hdr)
+{ return ntohs(hdr->ether_type); }

@@ -197,4 +197,6 @@ typedef struct
 }__attribute__ ((__packed__)) c_auth_status;
 
 
+
+
 #endif  /* __VNSCOMMAND_H */

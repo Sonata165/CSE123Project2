@@ -8,19 +8,7 @@
    The ARP cache entries hold IP->MAC mappings and are timed out every SR_ARPCACHE_TO seconds.
 
    Pseudocode for use of these structures follows.
-   --
 
-   # When sending packet to next_hop_ip:
-
-    entry = arpcache_lookup(next_hop_ip)
-    if entry:
-        use next_hop_ip->mac mapping in entry to send the packet
-        free entry
-    else:
-        req = arpcache_queuereq(next_hop_ip, packet, len)
-        send_arp_request(req)
-
-   --
 
    Since send_arp_request as defined in the comments above could destroy your
    current request, make sure to save the next pointer before calling
@@ -34,6 +22,7 @@
 #include <time.h>
 #include <pthread.h>
 #include "sr_if.h"
+// #include "sr_router.h"
 
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0
@@ -58,6 +47,7 @@ typedef struct sr_arpreq {
                                    never sent, will be 0. */
     uint32_t times_sent;        // Number of times this request was sent. You should update this. 
     PacketInReq* packets;  /* List of pkts waiting on this req to finish */
+    uint8_t* req_pkt;
     struct sr_arpreq* next; // Next arp request
 } ArpReq;
 
@@ -137,6 +127,8 @@ void sr_arpcache_sweepreqs(Router* sr);
 void send_arp_request(Router* sr, ArpReq* req);
 void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,
     unsigned int len, char* interface_name);
+
+void print_arp_cache(ArpCache* cache);
 
 /*----------DON'T TOUCH--------------*/
 /* You shouldn't have to call these methods--they're already called in the

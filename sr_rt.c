@@ -175,18 +175,100 @@ void sr_print_routing_entry(struct sr_rt* entry)
  * outgoing interface.
  * HINT: Dont Forget To Do Defensive Copy!
  * Parameters:
- *   dst_ip: the destination IP addr.
+ *   rtable: forwarding table
+ *   dst_ip: the destination IP addr, host order.
  * Returns:
  *   The corresponding rtable entry.
  *   NULL if nothing found.
  */
 RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
 {
+    fprintf(stderr, "I'm looking for %u: ", dst_ip);
+    print_addr_ip_int(dst_ip);
+
+    uint8_t max_prefix_len = 0;
+    RTableEntry* ret = NULL;
     RTableEntry* p = NULL;
     for (p = rtable; p != NULL; p = p->next){
-        uint32_t ip_value = in_addr_to_ip(p->dest);
-        if (ip_value == dst_ip)
-            return p;
+        //Get p's network addr
+        uint32_t net_addr = get_net_addr(p);
+        // fprintf(stderr, "IP looking for this %u: ", net_addr);
+        // print_addr_ip_int(net_addr);
+        uint32_t dst_net_addr = dst_ip & in_addr_to_ip(p->mask);
+        // print_addr_ip_int(dst_net_addr);
+        uint32_t tmp = ~(dst_net_addr ^ net_addr);
+        // fprintf(stderr, "same string: %08x ", tmp);
+        uint32_t check = compute_prefix_length(tmp);
+        uint32_t prefix_len = compute_prefix_length(in_addr_to_ip(p->mask));
+        // fprintf(stderr, "check = %d\n", check);
+        if (check == 32 && prefix_len > max_prefix_len){
+            max_prefix_len = prefix_len;
+            ret = p;
+        }
     }
-    return NULL;
+
+    if (max_prefix_len == 0){
+        fprintf(stderr, "Find No rtable entry!\n");
+        return NULL;
+    }
+
+    // Debug
+    fprintf(stderr, "finally, chose %s\n", ret->interface);
+
+    return ret;
+}
+
+/**
+ * Get the next hop of this entry.
+ * Returns:
+ *   the uint32_t form next hop IP.
+ */
+uint32_t get_nexthop(RTableEntry* entry)
+{
+    uint32_t ret = in_addr_to_ip(entry->gw);
+    return ret;
+}
+
+/**
+ * Get the outgoing interface name of this entry.
+ * Returns:
+ *   the outgoing interface name of this entry
+ */
+char* get_interface_name(RTableEntry* entry)
+{
+    return entry->interface;
+}
+
+/**
+ * Get the network addr described by dest and mask together.
+ * Returns:
+ *   the network addr described by dest and mask together.
+ */
+uint32_t get_net_addr(RTableEntry* entry)
+{
+    uint32_t dest = in_addr_to_ip(entry->dest);
+    uint32_t mask = in_addr_to_ip(entry->mask);
+    uint32_t ret = dest & mask;
+    return ret;
+}
+
+/**
+ * Get the number of consecutive 1s in the beginning of bit_string.
+ * Parameters:
+ *   bit_string - the binary string to be checked.
+ * Returns:
+ *   the number of consecutive 1s in the beginning of bit_string
+ */
+uint8_t compute_prefix_length(uint32_t bit_string)
+{
+    uint8_t cnt = 0;
+    for (int i = 0; i < 32; i++){
+        if (bit_string & 0x80000000){
+            cnt += 1;
+            bit_string = bit_string << 1;
+        }
+        else
+            break;
+    }
+    return cnt;
 }

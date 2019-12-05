@@ -1,6 +1,6 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 
 struct sr_ethernet_hdr {
@@ -14,6 +14,24 @@ struct sr_ethernet_hdr {
 
 /* Ethernet header */
 typedef struct sr_ethernet_hdr EthernetHeader;
+
+#define ICMP_T11_DATA_SIZE 28
+/**
+ * Structure of a type11 ICMP header
+ */
+struct sr_icmp_t11_hdr {
+#define ECHO_MSG_TYPE 8
+#define ECHO_REPLY_TYPE 0
+    uint8_t icmp_type;
+#define ECHO_MSG_CODE 0
+#define ECHO_REPLY_CODE 0
+    uint8_t icmp_code;
+    uint16_t icmp_sum;
+    uint32_t unused;
+    uint8_t data[ICMP_T11_DATA_SIZE];
+
+} __attribute__((packed));
+typedef struct sr_icmp_t11_hdr IcmpHeaderT11;
 
 struct sr_arp_hdr {
     uint16_t hardware_type; /* format of hardware address   */
@@ -29,6 +47,7 @@ struct sr_arp_hdr {
 
 /* ARP header */
 typedef struct sr_arp_hdr ArpHeader;
+
 void print_addr_eth(uint8_t* addr)
 {
     int pos = 0;
@@ -41,9 +60,10 @@ void print_addr_eth(uint8_t* addr)
     }
     fprintf(stderr, "\n");
 }
+
 struct sr_ip_hdr {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned int ip_hl : 4; /* header length */
+    unsigned int ip_hl : 4; /* header length, only 4 bits, [0, 15] */
     unsigned int ip_v : 4; /* version */
 #elif __BYTE_ORDER == __BIG_ENDIAN
     unsigned int ip_v : 4; /* version */
@@ -66,7 +86,7 @@ struct sr_ip_hdr {
     uint16_t ip_sum; /* checksum */
     uint32_t ip_src, ip_dst; /* source and dest address */
 } __attribute__((packed));
-
+typedef struct sr_ip_hdr IpHeader;
 
 /**
  * Prints out IP address from integer value
@@ -97,19 +117,84 @@ uint32_t str_to_ip(char buf[])
     return ret;
 }
 
+struct
+{
+    int a : 4;
+    int b : 13;
+    int c : 1;
+} test;
+
+struct
+{
+    int a : 16;
+    int b : 25;
+
+    uint8_t c;
+    // char d;
+    // uint32_t e;
+
+} test1;
+
+/**
+ * The checksum field is the 16 bit one's complement of the one's
+ *   complement sum of all 16 bit words in the header.  For purposes of
+ *    computing the checksum, the value of the checksum field is zero.
+ */
+void compute_checksum()
+{
+}
+
+uint16_t cksum(uint16_t* buf, int len)
+{
+    uint32_t sum = 0;
+    while (len--) {
+        sum += *buf++;
+        if (sum & 0xFFFF0000) {
+            sum &= 0xFFFF;
+            sum++;
+        }
+    }
+    return ~(sum & 0xFFFF);
+}
+
+uint16_t shit()
+{
+    uint32_t a = 2100000000;
+    return a;
+}
+
+struct sr_icmp_t8_hdr {
+#define ICMP_T11_DATA_SIZE 28
+#define ECHO_MSG_TYPE 8
+#define ECHO_REPLY_TYPE 0
+#define ECHO_CODE 0
+    uint8_t icmp_type;
+    uint8_t icmp_code;
+    uint16_t icmp_sum;
+    uint16_t icmp_identifier;
+    uint16_t icmp_seqnum;
+} __attribute__((packed));
+typedef struct sr_icmp_t8_hdr IcmpHeaderT8;
+
+uint8_t compute_prefix_length(uint32_t bit_string)
+{
+    uint8_t cnt = 0;
+    for (int i = 1; i <= 32; i++){
+        if (bit_string & 0x80000000) {
+            cnt += 1;
+            bit_string = bit_string << 1;
+        }
+        else
+            break;
+    }
+    return cnt;
+}
+
+
+
 int main()
 {
-    uint32_t ip = 3232236034;
-    char ip_str[] = "192.168.2.2";
-    // printf("%s\n", ip_str);
-    // char* tok = strtok(ip_str, ".");
-    // printf("%s\n", tok);
-    // printf("%s\n", ip_str);
-    // char* tok1 = strtok(NULL, ".");
-    // printf("%s\n", tok1);
-    // printf("%s\n", ip_str);
-    // printf("%s\n", strtok(NULL, "."));
-    uint32_t a = str_to_ip(ip_str);
-    print_addr_ip_int(a);
-    printf("%s\n", ip_str);
+    uint32_t a = 0xf8bff1dd;
+    uint8_t res = compute_prefix_length(a);
+    printf("%d\n", res);
 }

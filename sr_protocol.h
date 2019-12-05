@@ -75,30 +75,68 @@
   #define __BYTE_ORDER __BIG_ENDIAN
   #endif
 #endif
-#define ICMP_DATA_SIZE 28
 
-/* Structure of a type11 ICMP header
+/**
+ * Structure of ICMP Type 3 (Destination Unreachable) packets' header.
+ * 36 bytes, NETWORK BYTE ORDER.
  */
-struct sr_icmp_t11_hdr {
-#define ECHO_MSG_TYPE 8
-#define ECHO_REPLY_TYPE 0
+struct sr_icmp_t3_hdr {
+#define ICMP_T3_SIZE 36 
+#define ICMP_T3_DATA_SIZE 28
+#define DST_UNREACHABLE_TYPE 3
+#define PORT_UNREACHABLE_CODE 3
+#define NET_UNREACHABLE_CODE 0
+#define HOST_UNREACHABLE_CODE 1
     uint8_t icmp_type;
-#define ECHO_MSG_CODE 0
-#define ECHO_REPLY_CODE 0
     uint8_t icmp_code;
     uint16_t icmp_sum;
     uint32_t unused;
-    uint8_t data[ICMP_DATA_SIZE];
-
+    uint8_t data[ICMP_T3_DATA_SIZE];
 } __attribute__((packed));
+typedef struct sr_icmp_t3_hdr IcmpHeaderT3;
 
-/* ICMP header */
-typedef struct sr_icmp_t11_hdr IcmpHeader;
+/**
+ * Structure of a type 11 (Time Exceeded) ICMP header
+ * 36 bytes. NETWORK BYTE ORDER.
+ */
+struct sr_icmp_t11_hdr {
+#define ICMP_T11_SIZE 36
+#define ICMP_T11_DATA_SIZE 28
+#define TTL_TYPE 11
+#define TTL_CODE 0
+    uint8_t icmp_type;
+    uint8_t icmp_code;
+    uint16_t icmp_sum;
+    uint32_t unused;
+    uint8_t data[ICMP_T11_DATA_SIZE];
+} __attribute__((packed));
+typedef struct sr_icmp_t11_hdr IcmpHeaderT11;
+
+/**
+ * Structure of a type 8(echo msg) and type 8(echo reply) ICMP header
+ * 8 bytes. NETWORK BYTE ORDER.
+ * ATTENTION: 'data' field will be treated as payload, so they are not here. 
+ * BUT, when we talk to the length of ICMP type 8 header, the length of 'data' will be included.
+ */
+struct sr_icmp_t8_hdr {
+#define ICMP_T8_SIZE 8 // NOT TRUE HEADER LENGTH!
+#define ECHO_MSG_TYPE 8
+#define ECHO_REPLY_TYPE 0
+#define ECHO_CODE 0
+    uint8_t icmp_type;
+    uint8_t icmp_code;
+    uint16_t icmp_sum;
+    uint16_t icmp_identifier;
+    uint16_t icmp_seqnum;
+} __attribute__((packed));
+typedef struct sr_icmp_t8_hdr IcmpHeaderT8;
 
 /*
  * Structure of an internet header, naked of options.
+ * 20 bytes. NETWORK BYTE ORDER.
  */
 struct sr_ip_hdr {
+#define IP_HDR_SIZE 20 // IP header rsize in byte
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned int ip_hl : 4; /* header length */
     unsigned int ip_v : 4; /* version */
@@ -108,23 +146,20 @@ struct sr_ip_hdr {
 #else
 #error "Byte ordering ot specified "
 #endif
-
 #define IP_ADDR_LEN 4
-    uint8_t ip_tos; /* type of service */
-    uint16_t ip_len; /* total length */
-    uint16_t ip_id; /* identification */
-    uint16_t ip_off; /* fragment offset field */
-#define IP_RF 0x8000 /* reserved fragment flag */
-#define IP_DF 0x4000 /* dont fragment flag */
-#define IP_MF 0x2000 /* more fragments flag */
+#define IP_RF 0x8000    /* reserved fragment flag */
+#define IP_DF 0x4000    /* dont fragment flag */
+#define IP_MF 0x2000    /* more fragments flag */
 #define IP_OFFMASK 0x1fff /* mask for fragmenting bits */
-    uint8_t ip_ttl; /* time to live */
-    uint8_t ip_pro; /* protocol */
-    uint16_t ip_sum; /* checksum */
+    uint8_t ip_tos;     /* type of service */
+    uint16_t ip_len;    /* total length */
+    uint16_t ip_id;     /* identification */
+    uint16_t ip_off;    /* fragment offset field */
+    uint8_t ip_ttl;     /* time to live */
+    uint8_t ip_pro;     /* protocol */
+    uint16_t ip_sum;    /* checksum */
     uint32_t ip_src, ip_dst; /* source and dest address */
 } __attribute__((packed));
-
-/* IP Header */
 typedef struct sr_ip_hdr IpHeader;
 
 /* 
@@ -132,30 +167,50 @@ typedef struct sr_ip_hdr IpHeader;
  * Easy enough to solve that and define it here.
  * 
  * Every IP packet sent by ethernet protocol will be added an ethernet header.
+ * 14 bytes. NETWORK BYTE ORDER.
  */
 struct sr_ethernet_hdr {
+#define ETHER_HDR_SIZE 14 
 #ifndef ETHER_ADDR_LEN
 #define ETHER_ADDR_LEN 6
 #endif
-    uint8_t dst_mac_addr[ETHER_ADDR_LEN]; /* destination ethernet address */
-    uint8_t src_mac_addr[ETHER_ADDR_LEN]; /* source ethernet address */
-    uint16_t ether_type; /* packet type ID */
+    uint8_t dst_mac_addr[ETHER_ADDR_LEN];
+    uint8_t src_mac_addr[ETHER_ADDR_LEN];
+    uint16_t ether_type;
 } __attribute__((packed));
-
-/* Ethernet header */
 typedef struct sr_ethernet_hdr EthernetHeader;
 
+/**
+ * ARP header.
+ * 28 bytes. NETWORK BYTE ORDER.
+ */
+struct sr_arp_hdr {
+#define ARP_HDR_SIZE 28 
+    uint16_t hardware_type; /* hardware type */
+    uint16_t protocol_type; /* protocol type, should be IP */
+    unsigned char h_addr_len; /* length of hardware address   */
+    unsigned char p_addr_len; /* length of protocol address   */
+    uint16_t arp_option; /* ARP opcode (command), network byte order */
+    unsigned char src_mac_addr[ETHER_ADDR_LEN]; /* sender hardware address      */
+    uint32_t src_ip_addr; /* sender IP address, network byte order */
+    unsigned char dst_mac_addr[ETHER_ADDR_LEN]; /* target hardware address      */
+    uint32_t dst_ip_addr; /* target IP address, network byte order */
+} __attribute__((packed));
+typedef struct sr_arp_hdr ArpHeader;
+
+/**
+ * Code for IpHeader.ip_pro
+ */
 enum sr_ip_protocol {
     ip_protocol_icmp = 0x0001,
 };
 
 /**
- * Code for protocol type
- * Codes below describe to different IP packet, and will be added to ethernet header.
+ * Code for EthernetHeader.ether_type and ArpHeader.protocol_type.
  */
 enum sr_ethertype {
-    ethertype_arp = 0x0806,
-    ethertype_ip = 0x0800,
+    ethertype_arp = 0x0806, // 2054
+    ethertype_ip = 0x0800, // 2048
 };
 
 /**
@@ -167,31 +222,11 @@ enum sr_arp_opcode {
 };
 
 /**
- * Code for ARP hardware type.
+ * Code for ArpHeader.hardware type.
  */
 enum sr_arp_hrd_fmt {
     arp_hrd_ethernet = 0x0001,
 };
-
-struct sr_arp_hdr {
-    uint16_t hardware_type; /* hardware type */
-    uint16_t protocol_type; /* protocol type, IP or ARP */
-    unsigned char h_addr_len; /* length of hardware address   */
-    unsigned char p_addr_len; /* length of protocol address   */
-    uint16_t arp_option; /* ARP opcode (command)         */
-    unsigned char src_mac_addr[ETHER_ADDR_LEN]; /* sender hardware address      */
-    uint32_t src_ip_addr; /* sender IP address            */
-    unsigned char dst_mac_addr[ETHER_ADDR_LEN]; /* target hardware address      */
-    uint32_t dst_ip_addr; /* target IP address            */
-} __attribute__((packed));
-
-/* ARP header */
-typedef struct sr_arp_hdr ArpHeader;
-
-typedef struct FrameAndLen_t {
-    uint8_t* frame; // a raw Ethernet frame
-    uint8_t len; // the total length of the frame
-} FrameAndLen;
 
 #define sr_IFACE_NAMELEN 32
 

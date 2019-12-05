@@ -24,6 +24,78 @@ static int  sr_arp_req_not_for_us(struct sr_instance* sr,
                                   uint8_t * packet /* lent */,
                                   unsigned int len,
                                   char* interface  /* lent */);
+                        
+/**
+ * Handle non-icmp packet or packets whose can't be found in rtable, 
+ * by sending back ICMP Type 3 message
+ * Parameters:
+ *   sr - a router
+ *   packet - a pointer pointing to the input Ethernet Frame
+ *   len - the length of the Frame
+ *   interface - outgoing interface
+ */
+void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet, 
+        unsigned int len, char* interface_name)
+{
+    Interface* iface = sr_get_interface(sr, interface_name);
+    EthernetHeader* eth_hdr_old = (EthernetHeader*)packet;
+    IpHeader* ip_hdr_old = (IpHeader*)(packet + ETHER_HDR_SIZE);
+
+    uint32_t buf_len = ETHER_HDR_SIZE + IP_HDR_SIZE + ICMP_T3_SIZE;
+    uint8_t* buf = (uint8_t*)malloc(buf_len);
+    EthernetHeader* eth_hdr = (EthernetHeader*)buf;
+    IpHeader* ip_hdr = (IpHeader*)(buf + ETHER_HDR_SIZE);
+    IcmpHeaderT3* icmp_hdr = (IcmpHeaderT3*)(buf + ETHER_HDR_SIZE + IP_HDR_SIZE);
+
+    icmp_t3_hdr_set_value(icmp_hdr, code, ip_hdr_old,
+            packet + ETHER_HDR_SIZE + IP_HDR_SIZE);
+    ip_hdr_set_value(ip_hdr, 4, 5, ip_get_tos(ip_hdr_old), IP_HDR_SIZE+ICMP_T3_SIZE, 
+            ip_get_id(ip_hdr_old), ip_get_off(ip_hdr_old), 64, ip_protocol_icmp, 
+            if_get_ip(iface), ip_get_src(ip_hdr_old));
+    eth_hdr_set_value(eth_hdr, eth_get_dst(eth_hdr_old), eth_get_src(eth_hdr_old), ethertype_ip);
+
+    sr_send_packet(sr, buf, buf_len, interface_name);
+
+    // Debug
+    fprintf(stderr, "Port/Net Unreachable ICMP Type 3  msg constructed: \n");
+    print_hdrs(buf, buf_len);
+}
+
+/**
+ * Handle time exceeded IP packet by sending back ICMP Type 11 message
+ * Parameters:
+ *   sr - a router
+ *   packet - a pointer pointing to the input Ethernet Frame
+ *   len - the length of the Frame
+ *   interface - outgoing interface
+ */
+void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len, 
+        char* interface_name)
+{
+    uint32_t buf_len = ETHER_HDR_SIZE + IP_HDR_SIZE + ICMP_T11_SIZE;
+    uint8_t* buf = (uint8_t*)malloc(buf_len);
+    EthernetHeader* eth_hdr = (EthernetHeader*)buf;
+    IpHeader* ip_hdr = (IpHeader*)(buf + ETHER_HDR_SIZE);
+    IcmpHeaderT11* icmp_hdr = (IcmpHeaderT11*)(buf + ETHER_HDR_SIZE + IP_HDR_SIZE);
+
+    EthernetHeader* eth_hdr_old = (EthernetHeader*)packet;
+    IpHeader* ip_hdr_old = (IpHeader*)(packet + ETHER_HDR_SIZE);
+    uint8_t* data = packet + ETHER_HDR_SIZE + IP_HDR_SIZE;
+
+    icmp_t11_hdr_set_value(icmp_hdr, ip_hdr_old, data);
+    ip_hdr_set_value(ip_hdr, 4, 5, ip_get_tos(ip_hdr_old), IP_HDR_SIZE + ICMP_T11_SIZE,
+            ip_get_id(ip_hdr_old), ip_get_off(ip_hdr_old), 64, ip_protocol_icmp,
+            ip_get_dst(ip_hdr_old), ip_get_src(ip_hdr_old));
+    eth_hdr_set_value(eth_hdr, eth_get_dst(eth_hdr_old), eth_get_src(eth_hdr_old), ethertype_ip);
+
+    sr_send_packet(sr, buf, buf_len, interface_name);
+
+    // Debug
+    fprintf(stderr, "Port Unreachable ICMP Type 11 (ttl error) msg constructed: \n");
+    print_hdrs(buf, buf_len);
+    print_hdr_ip(buf + ETHER_HDR_SIZE + IP_HDR_SIZE + 8);
+}
+
 int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expected_cmd);
 
 /*-----------------------------------------------------------------------------
@@ -37,7 +109,6 @@ static void sr_session_closed_help()
 }
 
 /*-----------------------------------------------------------------------------
- * Method: sr_connect_to_server()
  * Scope: Global
  *
  * Connect to the virtual server
@@ -139,7 +210,6 @@ int sr_connect_to_server(struct sr_instance* sr,unsigned short port,
 
 
 /*-----------------------------------------------------------------------------
- * Method: sr_handle_hwinfo(..)
  * scope: global
  *
  *
@@ -300,8 +370,7 @@ int sr_handle_auth_status(struct sr_instance* sr, c_auth_status* status) {
 }
 
 /*-----------------------------------------------------------------------------
- * Method: sr_read_from_server(..)
- * Scope: global
+ * Scope: Global
  *
  * Houses main while loop for communicating with the virtual router server.
  *---------------------------------------------------------------------------*/
@@ -421,7 +490,7 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
                     ntohl(sr_pkt->mLen) - sizeof(c_packet_header));
 
             /* -- pass to router, student's code should take over here -- */
-            sr_handlepacket(sr,
+            handle_packet(sr,
                     (buf+sizeof(c_packet_header)),
                     len - sizeof(c_packet_ethernet_header) +
                     sizeof(struct sr_ethernet_hdr),
@@ -489,7 +558,6 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
 }/* -- sr_read_from_server -- */
 
 /*-----------------------------------------------------------------------------
- * Method: sr_ether_addrs_match_interface(..)
  * Scope: Local
  *
  * Make sure ethernet addresses are sane so we don't muck uo the system.

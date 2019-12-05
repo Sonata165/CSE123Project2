@@ -36,7 +36,7 @@ typedef struct sr_instance Router;
 typedef struct sr_if {
     char name[sr_IFACE_NAMELEN]; // name
     unsigned char addr[ETHER_ADDR_LEN]; // MAC addr
-    uint32_t ip; // IP addr
+    uint32_t ip; // IP addr, NETWORK ORDER
     uint32_t speed;
     struct sr_if* next;
 } Interface;
@@ -47,5 +47,8 @@ void sr_set_ether_addr(Router*, const unsigned char*);
 void sr_set_ether_ip(Router*, uint32_t ip_nbo);
 void sr_print_if_list(Router*);
 void sr_print_if(Interface*);
+
+uint32_t if_get_ip(Interface* iface);
+char* if_get_name(Interface* iface);
 
 #endif /* --  sr_INTERFACE_H -- */

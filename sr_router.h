@@ -12,10 +12,12 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
+#include "sr_rt.h"
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
@@ -64,14 +66,20 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
                     const char* iface /* borrowed */);
 int sr_connect_to_server(struct sr_instance*, unsigned short, char*);
 int sr_read_from_server(struct sr_instance*);
+void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet, 
+        unsigned int len, char* interface_name);
+void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len, 
+        char* interface_name);
 
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance*);
-void sr_handlepacket(struct sr_instance*, uint8_t*, unsigned int, char*);
+void handle_packet(struct sr_instance*, uint8_t*, unsigned int, char*);
 void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,
     unsigned int len, char* interface);
 void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,
     unsigned int len, char* interface);
+void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
+        unsigned int len, char* interface_name);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance*, const char*);
