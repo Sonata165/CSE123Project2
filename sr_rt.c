@@ -24,7 +24,7 @@
  *   -1 otherwise.
  *---------------------------------------------------------------------*/
 
-int sr_load_rt(struct sr_instance* sr, const char* filename)
+int rt_load(struct sr_instance* sr, const char* filename)
 {
     FILE* fp;
     char line[BUFSIZ];
@@ -71,7 +71,7 @@ int sr_load_rt(struct sr_instance* sr, const char* filename)
             sr->routing_table = 0;
             clear_routing_table = 1;
         }
-        sr_add_rt_entry(sr, dest_addr, gw_addr, mask_addr, iface);
+        rt_add_entry(sr, dest_addr, gw_addr, mask_addr, iface);
     } /* -- while -- */
 
     return 0; /* -- success -- */
@@ -86,7 +86,7 @@ int sr_load_rt(struct sr_instance* sr, const char* filename)
  *   gw - next hop's IP addr
  *   if_name - through which interface can get to the next hop
  *---------------------------------------------------------------------*/
-void sr_add_rt_entry(struct sr_instance* sr, struct in_addr dest,
+void rt_add_entry(struct sr_instance* sr, struct in_addr dest,
     struct in_addr gw, struct in_addr mask, char* if_name)
 {
     struct sr_rt* rt_walker = 0;
@@ -131,7 +131,7 @@ void sr_add_rt_entry(struct sr_instance* sr, struct in_addr dest,
  * Parameters:
  *   sr - a router
  *---------------------------------------------------------------------*/
-void sr_print_routing_table(struct sr_instance* sr)
+void rt_print_routing_table(struct sr_instance* sr)
 {
     struct sr_rt* rt_walker = 0;
 
@@ -144,10 +144,10 @@ void sr_print_routing_table(struct sr_instance* sr)
 
     rt_walker = sr->routing_table;
 
-    sr_print_routing_entry(rt_walker);
+    rt_print_routing_entry(rt_walker);
     while (rt_walker->next) {
         rt_walker = rt_walker->next;
-        sr_print_routing_entry(rt_walker);
+        rt_print_routing_entry(rt_walker);
     }
 
 }
@@ -157,7 +157,7 @@ void sr_print_routing_table(struct sr_instance* sr)
  * Parameters:
  *   entry - an entry in a forwarding table.
  *---------------------------------------------------------------------*/
-void sr_print_routing_entry(struct sr_rt* entry)
+void rt_print_routing_entry(struct sr_rt* entry)
 {
     /* -- REQUIRES --*/
     assert(entry);
@@ -171,14 +171,15 @@ void sr_print_routing_entry(struct sr_rt* entry)
 }
 
 /**
- * Perform Longest prefix match to find next hop and corresponding 
+ * Perform Longest prefix match to find next hop and corresponding
  * outgoing interface.
  * HINT: Dont Forget To Do Defensive Copy!
+ *
  * Parameters:
  *   rtable: forwarding table
  *   dst_ip: the destination IP addr, host order.
  * Returns:
- *   The corresponding rtable entry.
+ *   A copy of the corresponding rtable entry.
  *   NULL if nothing found.
  */
 RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
@@ -190,17 +191,11 @@ RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
     RTableEntry* ret = NULL;
     RTableEntry* p = NULL;
     for (p = rtable; p != NULL; p = p->next){
-        //Get p's network addr
-        uint32_t net_addr = get_net_addr(p);
-        // fprintf(stderr, "IP looking for this %u: ", net_addr);
-        // print_addr_ip_int(net_addr);
+        uint32_t net_addr = rt_get_net_addr(p);
         uint32_t dst_net_addr = dst_ip & in_addr_to_ip(p->mask);
-        // print_addr_ip_int(dst_net_addr);
         uint32_t tmp = ~(dst_net_addr ^ net_addr);
-        // fprintf(stderr, "same string: %08x ", tmp);
         uint32_t check = compute_prefix_length(tmp);
         uint32_t prefix_len = compute_prefix_length(in_addr_to_ip(p->mask));
-        // fprintf(stderr, "check = %d\n", check);
         if (check == 32 && prefix_len > max_prefix_len){
             max_prefix_len = prefix_len;
             ret = p;
@@ -215,7 +210,7 @@ RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
     // Debug
     fprintf(stderr, "finally, chose %s\n", ret->interface);
 
-    return ret;
+    return rt_copy(ret);
 }
 
 /**
@@ -234,7 +229,7 @@ uint32_t get_nexthop(RTableEntry* entry)
  * Returns:
  *   the outgoing interface name of this entry
  */
-char* get_interface_name(RTableEntry* entry)
+char* rt_get_interface_name(RTableEntry* entry)
 {
     return entry->interface;
 }
@@ -244,7 +239,7 @@ char* get_interface_name(RTableEntry* entry)
  * Returns:
  *   the network addr described by dest and mask together.
  */
-uint32_t get_net_addr(RTableEntry* entry)
+uint32_t rt_get_net_addr(RTableEntry* entry)
 {
     uint32_t dest = in_addr_to_ip(entry->dest);
     uint32_t mask = in_addr_to_ip(entry->mask);
@@ -253,7 +248,9 @@ uint32_t get_net_addr(RTableEntry* entry)
 }
 
 /**
+ * Scope: Local
  * Get the number of consecutive 1s in the beginning of bit_string.
+ *
  * Parameters:
  *   bit_string - the binary string to be checked.
  * Returns:
@@ -271,4 +268,17 @@ uint8_t compute_prefix_length(uint32_t bit_string)
             break;
     }
     return cnt;
+}
+
+/**
+ * Copy a RTableEntry.
+ *
+ * Parameters:
+ *   entry - the entry to be copied.
+ */
+RTableEntry* rt_copy(RTableEntry* entry)
+{
+    RTableEntry* ret = (RTableEntry*)malloc(sizeof(RTableEntry));
+    memcpy(ret, entry, sizeof(RTableEntry));
+    return ret;
 }

@@ -1,9 +1,9 @@
-/* This file defines an ARP cache, which is made of two structures: 
+/* This file defines an ARP cache, which is made of two structures:
     1. an ARP request queue
-    2. ARP cache entries. 
+    2. ARP cache entries.
 
-   The ARP request queue holds data about an outgoing ARP cache request 
-   and the packets that are waiting on a reply to that ARP cache request. 
+   The ARP request queue holds data about an outgoing ARP cache request
+   and the packets that are waiting on a reply to that ARP cache request.
 
    The ARP cache entries hold IP->MAC mappings and are timed out every SR_ARPCACHE_TO seconds.
 
@@ -24,7 +24,7 @@
 #include "sr_if.h"
 // #include "sr_router.h"
 
-#define SR_ARPCACHE_SZ    100  
+#define SR_ARPCACHE_SZ    100
 #define SR_ARPCACHE_TO    15.0
 
 /**
@@ -33,19 +33,20 @@
 typedef struct sr_packet {
     uint8_t* buf;               /* A raw Ethernet frame, presumably with the dest MAC empty */
     unsigned int len;           /* Length of raw Ethernet frame */
-    char* iface;                /* The outgoing interface */
+    char* in_iface;             /* Which interface the packet from */
+    char* out_iface;                /* The outgoing interface */
     struct sr_packet* next;
 } PacketInReq;
 
 /**
- * A node in ARP request queue. 
+ * A node in ARP request queue.
  */
 typedef struct sr_arpreq {
     uint32_t ip;                // whose MAC this requst want to know
-    time_t sent;                /* Last time this ARP request was sent. You 
-                                   should update this. If the ARP request was 
+    time_t sent;                /* Last time this ARP request was sent. You
+                                   should update this. If the ARP request was
                                    never sent, will be 0. */
-    uint32_t times_sent;        // Number of times this request was sent. You should update this. 
+    uint32_t times_sent;        // Number of times this request was sent. You should update this.
     PacketInReq* packets;  /* List of pkts waiting on this req to finish */
     uint8_t* req_pkt;
     struct sr_arpreq* next; // Next arp request
@@ -55,9 +56,9 @@ typedef struct sr_arpreq {
  * An entry in ARP cache.
  */
 typedef struct sr_arpentry {
-    unsigned char mac[6]; 
+    unsigned char mac[6];
     uint32_t ip;                /* IP addr in network byte order */
-    time_t added;         
+    time_t added;
     int valid;
 } ArpEntry;
 
@@ -73,8 +74,8 @@ typedef struct sr_arpcache {
 } ArpCache;
 
 /**
- * Checks if an IP->MAC mapping is in the cache. IP is in network byte order. 
- * You must free the returned structure if it is not NULL. 
+ * Checks if an IP->MAC mapping is in the cache. IP is in network byte order.
+ * You must free the returned structure if it is not NULL.
  * Parameters:
  *   cache - a arp cache
  *   ip - the ip to be checked
@@ -89,14 +90,15 @@ ArpReq* sr_arpcache_queuereq(ArpCache* cache,
                             uint32_t ip,
                             uint8_t* packet,               /* borrowed */
                             unsigned int packet_len,
-                            char *iface);
+                            char* in_iface,
+                            char * out_iface);
 
-/** 
+/**
  * This method performs two works when receiving an ARP reply:
  * 1) Looks up this IP in the request queue. If it is found, returns a pointer
  *    to the sr_arpreq with this IP. Otherwise, returns NULL.
  * 2) Inserts this IP to MAC mapping in the cache, and marks it valid.
- * 
+ *
  * Parameters:
  *   cache - the ARP cache
  *   mac - the mac addr we just got replied
@@ -110,16 +112,16 @@ ArpReq* sr_arpcache_insert(ArpCache* cache,
 
 /**
  * Frees all memory associated with this arp request entry. If this arp request
- * entry is on the arp request queue, it is removed from the queue. 
- * 
+ * entry is on the arp request queue, it is removed from the queue.
+ *
  * Parameters:
  *   cache - the ARP cache
  *   entry - the ARP request you want to remove. Can be inside or outside the request queue.
  */
 void sr_arpreq_destroy(ArpCache* cache, ArpReq* entry);
 
-/** 
- * Prints out the ARP table. 
+/**
+ * Prints out the ARP table.
  */
 void sr_arpcache_dump(ArpCache* cache);
 

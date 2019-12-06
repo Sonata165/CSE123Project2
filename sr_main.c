@@ -303,7 +303,7 @@ int sr_verify_routing_table(struct sr_instance* sr)
 } /* -- sr_verify_routing_table -- */
 
 static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
-    if(sr_load_rt(sr, rtable) != 0) {
+    if(rt_load(sr, rtable) != 0) {
         fprintf(stderr,"Error setting up routing table from file %s\n",
                 rtable);
         exit(1);
@@ -312,6 +312,6 @@ static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
 
     printf("Loading routing table\n");
     printf("---------------------------------------------\n");
-    sr_print_routing_table(sr);
+    rt_print_routing_table(sr);
     printf("---------------------------------------------\n");
 }

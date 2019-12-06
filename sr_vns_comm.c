@@ -24,20 +24,20 @@ static int  sr_arp_req_not_for_us(struct sr_instance* sr,
                                   uint8_t * packet /* lent */,
                                   unsigned int len,
                                   char* interface  /* lent */);
-                        
+
 /**
- * Handle non-icmp packet or packets whose can't be found in rtable, 
+ * Handle non-icmp packet or packets whose can't be found in rtable,
  * by sending back ICMP Type 3 message
  * Parameters:
  *   sr - a router
  *   packet - a pointer pointing to the input Ethernet Frame
  *   len - the length of the Frame
- *   interface - outgoing interface
+ *   out_iface_name - outgoing interface
  */
-void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet, 
-        unsigned int len, char* interface_name)
+void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet,
+        unsigned int len, char* out_iface_name)
 {
-    Interface* iface = sr_get_interface(sr, interface_name);
+    Interface* iface = sr_get_interface(sr, out_iface_name);
     EthernetHeader* eth_hdr_old = (EthernetHeader*)packet;
     IpHeader* ip_hdr_old = (IpHeader*)(packet + ETHER_HDR_SIZE);
 
@@ -49,12 +49,12 @@ void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet,
 
     icmp_t3_hdr_set_value(icmp_hdr, code, ip_hdr_old,
             packet + ETHER_HDR_SIZE + IP_HDR_SIZE);
-    ip_hdr_set_value(ip_hdr, 4, 5, ip_get_tos(ip_hdr_old), IP_HDR_SIZE+ICMP_T3_SIZE, 
-            ip_get_id(ip_hdr_old), ip_get_off(ip_hdr_old), 64, ip_protocol_icmp, 
+    ip_hdr_set_value(ip_hdr, 4, 5, ip_get_tos(ip_hdr_old), IP_HDR_SIZE+ICMP_T3_SIZE,
+            ip_get_id(ip_hdr_old), ip_get_off(ip_hdr_old), 64, ip_protocol_icmp,
             if_get_ip(iface), ip_get_src(ip_hdr_old));
     eth_hdr_set_value(eth_hdr, eth_get_dst(eth_hdr_old), eth_get_src(eth_hdr_old), ethertype_ip);
 
-    sr_send_packet(sr, buf, buf_len, interface_name);
+    sr_send_packet(sr, buf, buf_len, out_iface_name);
 
     // Debug
     fprintf(stderr, "Port/Net Unreachable ICMP Type 3  msg constructed: \n");
@@ -67,10 +67,10 @@ void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet,
  *   sr - a router
  *   packet - a pointer pointing to the input Ethernet Frame
  *   len - the length of the Frame
- *   interface - outgoing interface
+ *   out_iface_name - outgoing interface
  */
-void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len, 
-        char* interface_name)
+void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len,
+        char* out_iface_name)
 {
     uint32_t buf_len = ETHER_HDR_SIZE + IP_HDR_SIZE + ICMP_T11_SIZE;
     uint8_t* buf = (uint8_t*)malloc(buf_len);
@@ -78,6 +78,7 @@ void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len,
     IpHeader* ip_hdr = (IpHeader*)(buf + ETHER_HDR_SIZE);
     IcmpHeaderT11* icmp_hdr = (IcmpHeaderT11*)(buf + ETHER_HDR_SIZE + IP_HDR_SIZE);
 
+    Interface* out_iface = sr_get_interface(sr, out_iface_name);
     EthernetHeader* eth_hdr_old = (EthernetHeader*)packet;
     IpHeader* ip_hdr_old = (IpHeader*)(packet + ETHER_HDR_SIZE);
     uint8_t* data = packet + ETHER_HDR_SIZE + IP_HDR_SIZE;
@@ -85,10 +86,10 @@ void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len,
     icmp_t11_hdr_set_value(icmp_hdr, ip_hdr_old, data);
     ip_hdr_set_value(ip_hdr, 4, 5, ip_get_tos(ip_hdr_old), IP_HDR_SIZE + ICMP_T11_SIZE,
             ip_get_id(ip_hdr_old), ip_get_off(ip_hdr_old), 64, ip_protocol_icmp,
-            ip_get_dst(ip_hdr_old), ip_get_src(ip_hdr_old));
+            if_get_ip(out_iface), ip_get_src(ip_hdr_old));
     eth_hdr_set_value(eth_hdr, eth_get_dst(eth_hdr_old), eth_get_src(eth_hdr_old), ethertype_ip);
 
-    sr_send_packet(sr, buf, buf_len, interface_name);
+    sr_send_packet(sr, buf, buf_len, out_iface_name);
 
     // Debug
     fprintf(stderr, "Port Unreachable ICMP Type 11 (ttl error) msg constructed: \n");
@@ -607,7 +608,7 @@ sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
  *   sr - a router.
  *   buf - packet to be sent.
  *   len - packet length
- *   iface - interface name 
+ *   iface - interface name
  *---------------------------------------------------------------------------*/
 int sr_send_packet(struct sr_instance* sr /* borrowed */,
                     uint8_t* buf /* borrowed */,

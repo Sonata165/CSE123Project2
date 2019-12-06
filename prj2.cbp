@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="prj2" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/prj2" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/prj2" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="sr_arpcache.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sr_arpcache.h" />
+		<Unit filename="sr_if.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sr_if.h" />
+		<Unit filename="sr_main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sr_protocol.h" />
+		<Unit filename="sr_router.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sr_router.h" />
+		<Unit filename="sr_rt.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sr_rt.h" />
+		<Unit filename="sr_utils.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sr_utils.h" />
+		<Unit filename="sr_vns_comm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="test.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="vnscommand.h" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
