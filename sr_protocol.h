@@ -162,7 +162,7 @@ struct sr_ip_hdr {
 } __attribute__((packed));
 typedef struct sr_ip_hdr IpHeader;
 
-/* 
+/*
  * Ethernet packet header prototype.  Too many O/S's define this differently.
  * Easy enough to solve that and define it here.
  * 

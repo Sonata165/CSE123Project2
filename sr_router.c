@@ -300,12 +300,12 @@ void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
     IcmpHeaderT8* icmp_hdr = (IcmpHeaderT8*)(packet + ETHER_HDR_SIZE + IP_HDR_SIZE);
     uint32_t icmp_len = len - ETHER_HDR_SIZE - IP_HDR_SIZE;
     uint16_t cksm = icmp_t8_cksum(icmp_hdr, icmp_len);
-    if (cksm != icmp_hdr->icmp_sum){
+    if (cksm != icmp_hdr->icmp_sum) {
         fprintf(stderr, "ICMP Checksum Error, packet damaged!\n");
         return;
     }
 
-    if (icmp_hdr->icmp_type == ECHO_MSG_TYPE){ // echo message
+    if (icmp_hdr->icmp_type == ECHO_MSG_TYPE) { // echo message
         fprintf(stderr, "icmp echo message received!\n");
         // Construct echo reply!
         uint8_t* buf = (uint8_t*)malloc(len);
