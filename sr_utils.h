@@ -34,10 +34,18 @@ void eth_copy_addr(unsigned char dst[], unsigned char src[]);
 uint8_t* eth_get_src(EthernetHeader* hdr);
 uint8_t* eth_get_dst(EthernetHeader* hdr);
 uint16_t eth_get_ethertype(EthernetHeader* hdr);
+uint8_t is_same_mac(uint8_t* addr1, uint8_t* addr2);
 
 // ARP operation
 void arp_hdr_set_value(ArpHeader* arp_hdr, uint16_t protocol_type, uint16_t option, unsigned char src_mac_addr[], uint32_t src_ip_addr, unsigned char dst_mac_addr[], uint32_t dst_ip_addr);
 uint16_t arp_get_option(ArpHeader* hdr);
+uint16_t arp_get_hardware_type(ArpHeader* hdr);
+uint16_t arp_get_protocol_type(ArpHeader* hdr);
+uint8_t arp_get_h_addr_len(ArpHeader* hdr);
+uint8_t arp_get_p_addr_len(ArpHeader* hdr);
+uint16_t arp_get_option(ArpHeader* hdr);
+uint32_t arp_get_src_ip_addr(ArpHeader* hdr);
+uint32_t arp_get_dst_ip_addr(ArpHeader* hdr);
 
 // IP header operation
 IpHeader* ip_hdr_set_value(IpHeader* hdr, uint32_t ver, uint32_t hl, uint8_t tos, uint16_t len, uint16_t id, uint16_t off, uint8_t ttl, uint8_t pro, uint32_t src, uint32_t dst);

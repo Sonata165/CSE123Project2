@@ -194,7 +194,10 @@ uint8_t compute_prefix_length(uint32_t bit_string)
 
 int main()
 {
-    uint32_t a = 0xf8bff1dd;
-    uint8_t res = compute_prefix_length(a);
-    printf("%d\n", res);
+    int* p1 = NULL;
+    int* p2;
+    int b = 3;
+    p2 = p1;
+    p2 = &b;
+    printf("%d\n", *p1);
 }

@@ -77,7 +77,7 @@ void send_arp_request(Router* sr, ArpReq* req)
     if (req->times_sent >= 5) {
         fprintf(stderr, "You are 5, I can't send you again!\n");
 
-        // TODO: Send ICMP host unreachable for every packets relevant to this req
+        // Send ICMP host unreachable for every packets relevant to this req
         PacketInReq* pkt;
         for (pkt = req->packets; pkt != NULL; pkt = pkt->next) {
             fprintf(stderr, "ifacename: %s\n", req->packets->out_iface);
@@ -237,9 +237,25 @@ struct sr_arpreq* sr_arpcache_queuereq(struct sr_arpcache* cache,
     /* If the IP wasn't found, add it */
     if (!req) {
         req = (struct sr_arpreq*)calloc(1, sizeof(struct sr_arpreq));
+        // req->ip = ip;
+        // req->next = cache->requests;
+        // cache->requests = req;
         req->ip = ip;
-        req->next = cache->requests;
-        cache->requests = req;
+        req->next = NULL;
+
+        // Append the new req to the end of tShe queue
+        if (cache->requests == NULL){
+            cache->requests = req;
+        }
+        else {
+            ArpReq* p;
+            for (p = cache->requests; p != NULL; p = p->next){
+                if (p->next == NULL){
+                    p->next = req;
+                }
+            }
+        }
+        
     }
 
     /* Add the packet to the list of packets for this request */

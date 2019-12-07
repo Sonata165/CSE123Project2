@@ -190,22 +190,37 @@ RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
     uint8_t max_prefix_len = 0;
     RTableEntry* ret = NULL;
     RTableEntry* p = NULL;
-    for (p = rtable; p != NULL; p = p->next){
-        uint32_t net_addr = rt_get_net_addr(p);
-        uint32_t dst_net_addr = dst_ip & in_addr_to_ip(p->mask);
-        uint32_t tmp = ~(dst_net_addr ^ net_addr);
-        uint32_t check = compute_prefix_length(tmp);
-        uint32_t prefix_len = compute_prefix_length(in_addr_to_ip(p->mask));
-        if (check == 32 && prefix_len > max_prefix_len){
-            max_prefix_len = prefix_len;
-            ret = p;
+    if (dst_ip != 0){
+        for (p = rtable; p != NULL; p = p->next){
+            uint32_t net_addr = rt_get_net_addr(p);
+            uint32_t dst_net_addr = dst_ip & in_addr_to_ip(p->mask);
+            print_addr_ip_int(net_addr);
+            print_addr_ip_int(dst_net_addr);
+            fprintf(stderr, "shit\n");
+            uint32_t tmp = ~(dst_net_addr ^ net_addr);
+            uint32_t check = compute_prefix_length(tmp);
+            fprintf(stderr, "check = %d\n", check);
+            uint32_t prefix_len = compute_prefix_length(in_addr_to_ip(p->mask));
+            if (check == 32 && prefix_len > max_prefix_len){
+                max_prefix_len = prefix_len;
+                ret = p;
+            }
+        }
+        if (max_prefix_len == 0){
+            fprintf(stderr, "Find No rtable entry!\n");
+            return NULL;
+        }
+    }
+    else {
+        for (p = rtable; p != NULL; p = p->next){
+            if (rt_get_net_addr(p) == 0){
+                ret = p;
+                break;
+            }
         }
     }
 
-    if (max_prefix_len == 0){
-        fprintf(stderr, "Find No rtable entry!\n");
-        return NULL;
-    }
+
 
     // Debug
     fprintf(stderr, "finally, chose %s\n", ret->interface);

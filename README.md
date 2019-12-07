@@ -125,7 +125,8 @@ Send ARP request packet in an arp request queue entry. If an entry doesn't have 
 The structure of routing table are defined in rt.h. Operations on routing table are implemented in rt.c.
 
 ### lookup_rtable()
-Perform Longest Prefix Match to the destination IP of incoming packet to entries in the routing table.
+Perform Longest Prefix Match to the destination IP of incoming packet to entries in the routing table.  
+If no entry have same prefix as dst, return the entry which has 0.0.0.0/0 as network addr.
 
 ## 7. sr_if.c / sr_if.h
 

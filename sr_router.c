@@ -93,7 +93,7 @@ void handle_packet(struct sr_instance* sr,
         handle_ip_packet(sr, packet, len, in_iface_name);
     }
     else {
-        fprintf(stderr, "Invalid packet type: %x\n", type);
+        fprintf(stderr, "Invalid ethertype: %x\n", type);
     }
 }
 
@@ -117,9 +117,25 @@ void handle_arp_packet(struct sr_instance* sr, uint8_t* packet,
         fprintf(stderr, "Invalid ARP header length: %d\n", len);
         return ;
     }
+    ArpHeader* arp_hdr = (ArpHeader*)(packet + ETHER_HDR_SIZE);
+
+    /* Validate */
+    if (arp_get_hardware_type(arp_hdr) != arp_hrd_ethernet
+            || arp_get_protocol_type(arp_hdr) != ethertype_ip
+            || arp_get_h_addr_len(arp_hdr) != 6
+            || arp_get_p_addr_len(arp_hdr) != 4){
+        fprintf(stderr, "Validation Failed!\n");
+        return ;
+    }
+
+    /* Drop ARP req/reply not for this router */
+    Interface* iface = sr_get_interface(sr, in_iface_name);
+    if (if_get_ip(iface) != arp_get_dst_ip_addr(arp_hdr)){
+        fprintf(stderr, "I don't want to forward ARP packets\n");
+        return ;
+    }
 
     /* Get ARP type (arp option) */
-    ArpHeader* arp_hdr = (ArpHeader*)(packet + ETHER_HDR_SIZE);
     uint16_t arp_type = arp_get_option(arp_hdr);
 
     /* If it's arp request, modify the packet and send back */
@@ -239,10 +255,17 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
 
         RTableEntry* rtable_entry = lookup_rtable(sr->routing_table, ip_dst);
         if (rtable_entry == NULL){
-            // No match! send ICMP net unreachable
+            // No match! send ICMP net unreachable and send the packet to default IP
             fprintf(stderr, "RTable no match!\n");
             send_icmp_type3(NET_UNREACHABLE_CODE, sr, packet, len, in_iface_name);
-            return;
+
+            RTableEntry* default_entry = lookup_rtable(sr->routing_table, 0);
+            if (default_entry == NULL){
+                return ;
+            }
+            else {
+                rtable_entry = default_entry;
+            }
         }
         uint32_t nexthop_ip = get_nexthop(rtable_entry);
         char* out_iface_name = rt_get_interface_name(rtable_entry);

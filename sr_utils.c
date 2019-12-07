@@ -14,7 +14,7 @@ void eth_copy_addr(unsigned char* dst, unsigned char* src)
 {
     if (src != NULL)
         memcpy(dst, src, ETHER_ADDR_LEN);
-    else 
+    else
         memset(dst, 0xFF, ETHER_ADDR_LEN);
 }
 
@@ -28,12 +28,12 @@ void arp_copy_mac(unsigned char* dst, unsigned char* src)
 {
     if (src != NULL)
         memcpy(dst, src, ETHER_ADDR_LEN);
-    else 
+    else
         memset(dst, 0, ETHER_ADDR_LEN);
 }
 
 /**
- * Prints out formatted Ethernet address, e.g. 00:11:22:33:44:55 
+ * Prints out formatted Ethernet address, e.g. 00:11:22:33:44:55
  **/
 void print_addr_eth(uint8_t* addr)
 {
@@ -49,7 +49,7 @@ void print_addr_eth(uint8_t* addr)
 }
 
 /**
- * Prints out IP address as a string from in_addr 
+ * Prints out IP address as a string from in_addr
  * Parameters
  *   address - IP addr, type: struct in_addr, host byte order
  */
@@ -108,7 +108,7 @@ uint32_t in_addr_to_ip(struct in_addr addr)
 }
 
 /**
- * Prints out fields in Ethernet header. 
+ * Prints out fields in Ethernet header.
  */
 void print_hdr_eth(uint8_t* buf)
 {
@@ -121,7 +121,7 @@ void print_hdr_eth(uint8_t* buf)
     fprintf(stderr, "\ttype: %d\n", ntohs(ehdr->ether_type));
 }
 
-/** 
+/**
  * Prints out fields in IP header.
  */
 void print_hdr_ip(uint8_t* buf)
@@ -156,7 +156,7 @@ void print_hdr_ip(uint8_t* buf)
 }
 
 /**
- * Prints out ICMP header fields 
+ * Prints out ICMP header fields
  */
 void print_hdr_icmp(uint8_t* buf)
 {
@@ -193,7 +193,7 @@ void print_hdr_arp(uint8_t* buf)
 }
 
 /**
- *  Prints out Ethernet header and IP/ARP header 
+ *  Prints out Ethernet header and IP/ARP header
  */
 void print_hdrs(uint8_t* buf, uint32_t length)
 {
@@ -247,8 +247,8 @@ void print_hdrs(uint8_t* buf, uint32_t length)
  *   dst_mac - MAC addr of dst or NULL
  *   ethertype - ethertype, HOST BYTE ORDER
  */
-void arp_hdr_set_value(ArpHeader* arp_hdr, uint16_t protocol_type, uint16_t option, 
-        unsigned char src_mac_addr[], uint32_t src_ip_addr, unsigned char dst_mac_addr[], 
+void arp_hdr_set_value(ArpHeader* arp_hdr, uint16_t protocol_type, uint16_t option,
+        unsigned char src_mac_addr[], uint32_t src_ip_addr, unsigned char dst_mac_addr[],
         uint32_t dst_ip_addr)
 {
     arp_hdr->hardware_type = htons(arp_hrd_ethernet);
@@ -310,7 +310,7 @@ void icmp_t11_hdr_set_value(IcmpHeaderT11* hdr, IpHeader* ip_hdr, uint8_t* data)
  *   identifier - identifier, NETWORK BYTE ORDER
  *   seqnum - sequence number, NETWORK BYTE ORDER
  */
-void icmp_t8_hdr_set_value(IcmpHeaderT8* hdr, uint32_t len, uint8_t type, uint16_t identifier, 
+void icmp_t8_hdr_set_value(IcmpHeaderT8* hdr, uint32_t len, uint8_t type, uint16_t identifier,
         uint16_t seqnum)
 {
     hdr->icmp_type = type;
@@ -338,7 +338,7 @@ void icmp_t8_hdr_set_value(IcmpHeaderT8* hdr, uint32_t len, uint8_t type, uint16
  * Returns:
  *   An ICMP header whose value is set to what were provided.
  */
-IpHeader* ip_hdr_set_value(IpHeader* hdr, uint32_t ver, uint32_t hl, uint8_t tos, 
+IpHeader* ip_hdr_set_value(IpHeader* hdr, uint32_t ver, uint32_t hl, uint8_t tos,
         uint16_t len, uint16_t id, uint16_t off, uint8_t ttl, uint8_t pro, uint32_t src, uint32_t dst)
 {
     hdr->ip_v = ver;
@@ -351,7 +351,7 @@ IpHeader* ip_hdr_set_value(IpHeader* hdr, uint32_t ver, uint32_t hl, uint8_t tos
     hdr->ip_pro = pro;
     hdr->ip_src = htonl(src);
     hdr->ip_dst = htonl(dst);
-    
+
     hdr->ip_sum = ip_cksum(hdr);
 
     return hdr;
@@ -432,12 +432,50 @@ void icmp_t3_hdr_set_value(IcmpHeaderT3* hdr, uint8_t code, IpHeader* ip_hdr, ui
     hdr->icmp_sum = icmp_cksum(hdr);
 }
 
+/**
+ * Check if addr1 and addr2 are the same mac address.
+ * Return:
+ *   1 if same, 0 if not the same.
+ */
+uint8_t is_same_mac(uint8_t* addr1, uint8_t* addr2)
+{
+    print_addr_eth(addr1);
+    print_addr_eth(addr2);
+    uint8_t ret = 1;
+    for (int i = 0; i <= ETHER_ADDR_LEN; i++){
+        fprintf(stderr, "i = %d, addr1 = %c, addr2 = %c\n", i, addr1[i], addr2[i]);
+        if (addr1[i] != addr2[i]){
+            ret = 0;
+            break;
+        }
+    }
+    return ret;
+}
 
 
 /* -------------ARP Getter---------------- */
 
+uint16_t arp_get_hardware_type(ArpHeader* hdr)
+{ return ntohs(hdr->hardware_type); }
+
+uint16_t arp_get_protocol_type(ArpHeader* hdr)
+{ return ntohs(hdr->protocol_type); }
+
+uint8_t arp_get_h_addr_len(ArpHeader* hdr)
+{ return hdr->h_addr_len; }
+
+uint8_t arp_get_p_addr_len(ArpHeader* hdr)
+{ return hdr->p_addr_len; }
+
 uint16_t arp_get_option(ArpHeader* hdr)
 { return ntohs(hdr->arp_option); }
+
+uint32_t arp_get_src_ip_addr(ArpHeader* hdr)
+{ return ntohl(hdr->src_ip_addr); }
+
+uint32_t arp_get_dst_ip_addr(ArpHeader* hdr)
+{ return ntohl(hdr->dst_ip_addr); }
+
 
 /* -------------ICMP Getter---------------- */
 
