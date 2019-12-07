@@ -266,6 +266,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
             else {
                 rtable_entry = default_entry;
             }
+            return ;
         }
         uint32_t nexthop_ip = get_nexthop(rtable_entry);
         char* out_iface_name = rt_get_interface_name(rtable_entry);
