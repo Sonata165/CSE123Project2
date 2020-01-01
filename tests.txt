@@ -1,0 +1,25 @@
+Test Case 1 : Functionality : Ping from client to server1
+Test Case 2 : Functionality : Traceroute from client to server2
+Test Case 3 : Functionality : Get HTTP content from server1
+Test Case 4 : ICMP : Send a ping from client to server with TTL 1, router should reject packet with TTL Exceeded
+Test Case 5 : Packet Sanity Check : When a packet of invalid Ethertype is sent, router should not process it
+Test Case 6 : Ethernet : Packet Smaller than Ethernet header
+Test Case 7 : ARP request with the wrong ARP code
+Test Case 8 : ARP - ARP request for the server IP sent to the router interface
+Test Case 9 : Check content of Echo reply
+Test Case 10 : IP Header options should be ignored.
+Test Case 11 : ICMP : TTL 1 - Echo request from client to client facing router interface 
+Test Case 11a : ICMP : TTL > 1: Echo request from client to routers client facing interface. 
+Test Case 12 : ICMP : TTL 1 - Echo request from client to routers server facing interface.  
+Test Case 12a : ICMP : TTL > 1: Echo request from client to routers server facing interface. 
+Test Case 13 : ICMP : TTL 2 - Echo request from client to server interface. 
+Test Case 14 : Traceroute : Traceroute to routers client facing interface 
+Test Case 15 : Traceroute : Traceroute to routers server facing interface 
+Test Case 16 : Routing : Destination Network Unreachable 
+Test Case 17 : Routing : Destination Host Unreachable 
+Test Case 18 : Routing : Invalid Checksum 
+Test Case 19 : TCP packet with TTL to router interface : Port Unreachable
+Test Case 20 - Routing - Longest Prefix Match
+Test Case 21 - Routing - Longest Prefix Match (172)
+Test Case 22 - Routing - Default entry
+Test Case 23 - Routing - Default entry with a valid destination network address
