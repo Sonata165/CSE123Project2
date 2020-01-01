@@ -259,17 +259,21 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
             fprintf(stderr, "RTable no match!\n");
             send_icmp_type3(NET_UNREACHABLE_CODE, sr, packet, len, in_iface_name);
 
-            RTableEntry* default_entry = lookup_rtable(sr->routing_table, 0);
-            if (default_entry == NULL){
-                return ;
-            }
-            else {
-                rtable_entry = default_entry;
-            }
+//            RTableEntry* default_entry = lookup_rtable(sr->routing_table, 0);
+//            if (default_entry == NULL){
+//                return ;
+//            }
+//            else {
+//                rtable_entry = default_entry;
+//            }
             return ;
         }
         uint32_t nexthop_ip = get_nexthop(rtable_entry);
         char* out_iface_name = rt_get_interface_name(rtable_entry);
+        fprintf(stderr, "nexthop_ip: ");
+        print_addr_ip_int(nexthop_ip);
+        fprintf(stderr, "out interface name: ");
+        fprintf(stderr, "%s\n", out_iface_name);
 
         ArpEntry* arp_entry = sr_arpcache_lookup(&sr->cache, nexthop_ip);
         if (arp_entry != NULL){ // ARP hit
@@ -342,8 +346,8 @@ void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
                 icmp_len, ECHO_REPLY_TYPE,
                 icmp_t8_get_identifier(icmp_hdr), icmp_t8_get_seqnum(icmp_hdr));
         ip_hdr_set_value((IpHeader*)(buf + ETHER_HDR_SIZE), 4, 5, ip_get_tos(ip_hdr),
-                ip_get_len(ip_hdr), ip_get_id(ip_hdr), ip_get_off(ip_hdr), 64, ip_protocol_icmp,
-                ip_get_dst(ip_hdr), ip_get_src(ip_hdr));
+                ip_get_len(ip_hdr), 0x0000, ip_get_off(ip_hdr) & IP_OFFMASK, 64,
+                ip_protocol_icmp, ip_get_dst(ip_hdr), ip_get_src(ip_hdr));
         eth_hdr_set_value((EthernetHeader*)buf, eth_get_dst(eth_hdr), eth_get_src(eth_hdr),
                 eth_get_ethertype(eth_hdr));
 

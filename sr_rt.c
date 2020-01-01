@@ -188,15 +188,19 @@ RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
     print_addr_ip_int(dst_ip);
 
     uint8_t max_prefix_len = 0;
-    RTableEntry* ret = NULL;
-    RTableEntry* p = NULL;
-//    if (dst_ip != 0){
-    for (p = rtable; p != NULL; p = p->next){
+    RTableEntry* ret = NULL; // To be returned
+    RTableEntry* p = NULL; // Used for iteration
+    RTableEntry* default_entry = NULL; // Save the defaulte entry
+
+    for (p = rtable; p != NULL; p = p->next){ // Try to find longest match, ignoring the default entry
         uint32_t net_addr = rt_get_net_addr(p);
+        if (net_addr == 0){
+            default_entry = p;
+            continue;
+        }
         uint32_t dst_net_addr = dst_ip & in_addr_to_ip(p->mask);
         print_addr_ip_int(net_addr);
         print_addr_ip_int(dst_net_addr);
-        fprintf(stderr, "shit\n");
         uint32_t tmp = ~(dst_net_addr ^ net_addr);
         uint32_t check = compute_prefix_length(tmp);
         fprintf(stderr, "check = %d\n", check);
@@ -206,12 +210,42 @@ RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
             ret = p;
         }
     }
-    if (max_prefix_len == 0){
-        fprintf(stderr, "Find No rtable entry!\n");
+
+    if (ret == NULL){ // If no match, return the default entry or NULL
+        if (default_entry != NULL)
+            ret = default_entry;
+    }
+
+    if (ret){
+        fprintf(stderr, "finally, chose %s\n", ret->interface);
+        return rt_copy(ret);
+    }
+    else {
+        fprintf(stderr, "RTable no match, no default entry.\n");
         return NULL;
     }
+
+//    if (dst_ip != 0){ // If dst in the packet is not 0.0.0.0
+//        for (p = rtable; p != NULL; p = p->next){
+//            uint32_t net_addr = rt_get_net_addr(p);
+//            uint32_t dst_net_addr = dst_ip & in_addr_to_ip(p->mask);
+//            print_addr_ip_int(net_addr);
+//            print_addr_ip_int(dst_net_addr);
+//            uint32_t tmp = ~(dst_net_addr ^ net_addr);
+//            uint32_t check = compute_prefix_length(tmp);
+//            fprintf(stderr, "check = %d\n", check);
+//            uint32_t prefix_len = compute_prefix_length(in_addr_to_ip(p->mask));
+//            if (check == 32 && prefix_len > max_prefix_len){
+//                max_prefix_len = prefix_len;
+//                ret = p;
+//            }
+//        }
+//        if (max_prefix_len == 0){
+//            fprintf(stderr, "Find No rtable entry!\n");
+//            return NULL;
+//        }
 //    }
-//    else {
+//    else { // If dst in the packet is 0.0.0.0, forward straight to 0.0.0.0/0
 //        for (p = rtable; p != NULL; p = p->next){
 //            if (rt_get_net_addr(p) == 0){
 //                ret = p;
@@ -219,11 +253,11 @@ RTableEntry* lookup_rtable(RTable* rtable, uint32_t dst_ip)
 //            }
 //        }
 //    }
-
-    // Debug
-    fprintf(stderr, "finally, chose %s\n", ret->interface);
-
-    return rt_copy(ret);
+//
+//    // Debug
+//    fprintf(stderr, "finally, chose %s\n", ret->interface);
+//
+//    return rt_copy(ret);
 }
 
 /**

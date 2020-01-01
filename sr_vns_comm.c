@@ -37,7 +37,7 @@ static int  sr_arp_req_not_for_us(struct sr_instance* sr,
 void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet,
         unsigned int len, char* out_iface_name)
 {
-    Interface* iface = sr_get_interface(sr, out_iface_name);
+    // Interface* iface = sr_get_interface(sr, out_iface_name);
     EthernetHeader* eth_hdr_old = (EthernetHeader*)packet;
     IpHeader* ip_hdr_old = (IpHeader*)(packet + ETHER_HDR_SIZE);
 
@@ -51,7 +51,7 @@ void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet,
             packet + ETHER_HDR_SIZE + IP_HDR_SIZE);
     ip_hdr_set_value(ip_hdr, 4, 5, ip_get_tos(ip_hdr_old), IP_HDR_SIZE+ICMP_T3_SIZE,
             ip_get_id(ip_hdr_old), ip_get_off(ip_hdr_old), 64, ip_protocol_icmp,
-            if_get_ip(iface), ip_get_src(ip_hdr_old));
+            ip_get_dst(ip_hdr_old), ip_get_src(ip_hdr_old));
     eth_hdr_set_value(eth_hdr, eth_get_dst(eth_hdr_old), eth_get_src(eth_hdr_old), ethertype_ip);
 
     sr_send_packet(sr, buf, buf_len, out_iface_name);

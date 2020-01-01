@@ -48,7 +48,7 @@ void sr_arpcache_sweepreqs(Router* sr)
  *          else:
  *              send arp request
  *              req->sent = now
- *              req->times_sent++
+ *              req->times_sent++j
  */
 void send_arp_request(Router* sr, ArpReq* req)
 {
@@ -236,26 +236,28 @@ struct sr_arpreq* sr_arpcache_queuereq(struct sr_arpcache* cache,
 
     /* If the IP wasn't found, add it */
     if (!req) {
-        req = (struct sr_arpreq*)calloc(1, sizeof(struct sr_arpreq));
-        // req->ip = ip;
-        // req->next = cache->requests;
-        // cache->requests = req;
+        req = (struct sr_arpreq*)calloc(1, sizeof(ArpReq));
+
         req->ip = ip;
         req->next = NULL;
 
-        // Append the new req to the end of tShe queue
-        if (cache->requests == NULL){
-            cache->requests = req;
-        }
-        else {
-            ArpReq* p;
-            for (p = cache->requests; p != NULL; p = p->next){
-                if (p->next == NULL){
-                    p->next = req;
-                }
-            }
-        }
-        
+        // Append the new req to the start of the queue ???
+        req->next = cache->requests;
+        cache->requests = req;
+
+//        // Append the new req to the end of the queue
+//        if (cache->requests == NULL){
+//            cache->requests = req;
+//        }
+//        else {
+//            ArpReq* p;
+//            for (p = cache->requests; p != NULL; p = p->next){
+//                if (p->next == NULL){
+//                    p->next = req;
+//                }
+//            }
+//        }
+
     }
 
     /* Add the packet to the list of packets for this request */
