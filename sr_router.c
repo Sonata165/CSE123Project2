@@ -37,8 +37,25 @@ void sr_init(struct sr_instance* sr)
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
 
     /* Add initialization code here! */
+//    pthread_t thread1;
+//    pthread_create(&thread1, NULL, schedule, sr);
 
 } /* -- sr_init -- */
+
+/**
+ * Do scheduling once in every certain period of time.
+ */
+void* schedule(void* sr_ptr)
+{
+    Router* sr = (Router*)sr_ptr;
+    pthread_mutex_init(&(sr->lock), NULL);
+
+    while (1){
+        usleep(1000000); // Schedule every 100 ms.
+    }
+
+    return NULL;
+}
 
 /**
  * Scope:  Global
@@ -258,14 +275,6 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
             // No match! send ICMP net unreachable and send the packet to default IP
             fprintf(stderr, "RTable no match!\n");
             send_icmp_type3(NET_UNREACHABLE_CODE, sr, packet, len, in_iface_name);
-
-//            RTableEntry* default_entry = lookup_rtable(sr->routing_table, 0);
-//            if (default_entry == NULL){
-//                return ;
-//            }
-//            else {
-//                rtable_entry = default_entry;
-//            }
             return ;
         }
         uint32_t nexthop_ip = get_nexthop(rtable_entry);

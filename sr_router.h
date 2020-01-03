@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
@@ -54,6 +55,7 @@ typedef struct sr_instance {
     struct sr_arpcache cache; /* ARP cache */
     pthread_attr_t attr;
     FILE* logfile;
+    pthread_mutex_t lock;
 } Router;
 
 /* -- sr_main.c -- */
@@ -66,9 +68,9 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
                     const char* iface /* borrowed */);
 int sr_connect_to_server(struct sr_instance*, unsigned short, char*);
 int sr_read_from_server(struct sr_instance*);
-void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet, 
+void send_icmp_type3(uint8_t code, struct sr_instance* sr, uint8_t* packet,
         unsigned int len, char* interface_name);
-void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len, 
+void send_icmp_type11(struct sr_instance* sr, uint8_t* packet, unsigned int len,
         char* interface_name);
 
 /* -- sr_router.c -- */
@@ -80,6 +82,7 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,
     unsigned int len, char* interface);
 void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
         unsigned int len, char* interface_name);
+void* schedule(void* sr);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance*, const char*);
