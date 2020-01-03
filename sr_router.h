@@ -55,6 +55,8 @@ typedef struct sr_instance {
     struct sr_arpcache cache; /* ARP cache */
     pthread_attr_t attr;
     FILE* logfile;
+
+
     pthread_mutex_t lock;
 } Router;
 
