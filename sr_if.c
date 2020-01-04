@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  * file:  sr_inface.
- * date:  Sun Oct 06 14:13:13 PDT 2002 
- * Contact: casado@stanford.edu 
+ * date:  Sun Oct 06 14:13:13 PDT 2002
+ * Contact: casado@stanford.edu
  *
  * Description:
  *
@@ -27,7 +27,7 @@
 
 typedef struct sr_if Interface;
 
-/*--------------------------------------------------------------------- 
+/*---------------------------------------------------------------------
  * Method: sr_get_interface
  * Scope: Global
  *
@@ -56,7 +56,23 @@ struct sr_if* sr_get_interface(struct sr_instance* sr, const char* name)
     return 0;
 }
 
-/*--------------------------------------------------------------------- 
+/**
+ * Scope: Global
+ * Get the instance of Interface according to the id provided.
+ */
+Interface* if_get_iface_by_id(Router* sr, uint8_t id)
+{
+    Interface* ret = NULL;
+    Interface* t;
+    for (t = sr->if_list; t != NULL; t = t->next){
+        if (t->id == id){
+            ret = t;
+        }
+    }
+    return ret;
+}
+
+/*---------------------------------------------------------------------
  * Method: sr_add_interface(..)
  * Scope: Global
  *
@@ -75,10 +91,14 @@ void sr_add_interface(struct sr_instance* sr, const char* name)
     /* -- empty list special case -- */
     if(sr->if_list == 0)
     {
-        sr->if_list = (struct sr_if*)malloc(sizeof(struct sr_if));
-        assert(sr->if_list);
-        sr->if_list->next = 0;
-        strncpy(sr->if_list->name,name,sr_IFACE_NAMELEN);
+        Interface* iface = (struct sr_if*)malloc(sizeof(struct sr_if));
+        assert(iface);
+        iface->next = NULL;
+        strncpy(iface->name, name, sr_IFACE_NAMELEN);
+        iface->id = sr->if_num;
+        sr->if_num += 1;
+
+        sr->if_list = iface;
         return;
     }
 
@@ -87,14 +107,17 @@ void sr_add_interface(struct sr_instance* sr, const char* name)
     while(if_walker->next)
     {if_walker = if_walker->next; }
 
-    if_walker->next = (struct sr_if*)malloc(sizeof(struct sr_if));
-    assert(if_walker->next);
-    if_walker = if_walker->next;
-    strncpy(if_walker->name,name,sr_IFACE_NAMELEN);
-    if_walker->next = 0;
-} /* -- sr_add_interface -- */ 
+    Interface* iface = (struct sr_if*)malloc(sizeof(struct sr_if));
+    assert(iface);
+    iface->next = NULL;
+    strncpy(iface->name, name, sr_IFACE_NAMELEN);
+    iface->id = sr->if_num;
+    sr->if_num += 1;
 
-/*--------------------------------------------------------------------- 
+    if_walker->next = iface;
+} /* -- sr_add_interface -- */
+
+/*---------------------------------------------------------------------
  * Method: sr_sat_ether_addr(..)
  * Scope: Global
  *
@@ -108,7 +131,7 @@ void sr_set_ether_addr(struct sr_instance* sr, const unsigned char* addr)
 
     /* -- REQUIRES -- */
     assert(sr->if_list);
-    
+
     if_walker = sr->if_list;
     while(if_walker->next)
     {if_walker = if_walker->next; }
@@ -118,7 +141,7 @@ void sr_set_ether_addr(struct sr_instance* sr, const unsigned char* addr)
 
 } /* -- sr_set_ether_addr -- */
 
-/*--------------------------------------------------------------------- 
+/*---------------------------------------------------------------------
  * Method: sr_set_ether_ip(..)
  * Scope: Global
  *
@@ -132,7 +155,7 @@ void sr_set_ether_ip(struct sr_instance* sr, uint32_t ip_nbo)
 
     /* -- REQUIRES -- */
     assert(sr->if_list);
-    
+
     if_walker = sr->if_list;
     while(if_walker->next)
     {if_walker = if_walker->next; }
@@ -142,7 +165,7 @@ void sr_set_ether_ip(struct sr_instance* sr, uint32_t ip_nbo)
 
 } /* -- sr_set_ether_ip -- */
 
-/*--------------------------------------------------------------------- 
+/*---------------------------------------------------------------------
  * Method: sr_print_if_list(..)
  * Scope: Global
  *
@@ -161,17 +184,17 @@ void sr_print_if_list(struct sr_instance* sr)
     }
 
     if_walker = sr->if_list;
-    
+
     sr_print_if(if_walker);
     while(if_walker->next)
     {
-        if_walker = if_walker->next; 
+        if_walker = if_walker->next;
         sr_print_if(if_walker);
     }
 
 } /* -- sr_print_if_list -- */
 
-/*--------------------------------------------------------------------- 
+/*---------------------------------------------------------------------
  * Method: sr_print_if(..)
  * Scope: Global
  *
@@ -202,3 +225,6 @@ uint32_t if_get_ip(Interface* iface)
 
 char* if_get_name(Interface* iface)
 { return iface->name; }
+
+uint8_t if_get_id(Interface* iface)
+{ return iface->id; }

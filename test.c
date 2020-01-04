@@ -3,73 +3,114 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h>
-#include <pthread.h>
+typedef struct packet_t {
+    uint8_t* buf;           /* A raw Ethernet frame, presumably with the dest MAC empty */
+    unsigned int len;           /* Length of raw Ethernet frame */
+    struct packet_t* next;
+} Packet;
 
-void printids(const char *s)
+void que_append(Packet** hdr_ptr, Packet* packet)
 {
-    pid_t pid;
-    pthread_t tid;
-    pid = getpid();
-    tid = pthread_self();
-    printf("%s pid %u tid %u (0x%x)\n", s, (unsigned int) pid,
-            (unsigned int) tid, (unsigned int) tid);
-}
-
-void* thr_fn1(void* arg)
-{
-
-    int* t = (int*)arg;
-    *t += 1;
-    printf("sub1: %d\n", *t);
-
-    for (int i = 1; i <= 10; i++){
-        usleep(100000);
-        *t += 10;
-        printf("hahaha!\n");
+    if (*hdr_ptr == NULL){
+        *hdr_ptr = packet;
     }
-
-    printids("new thread 1: ");
-    printf("sub1: %d\n", *t);
-    return NULL;
+    else {
+        for (Packet* t = *hdr_ptr; t != NULL; t = t->next){
+            if (t->next == NULL){
+                t->next = packet;
+                break;
+            }
+        }
+    }
 }
 
-void* thr_fn2(void* arg)
+Packet* que_pop(Packet** hdr_ptr)
 {
-    int* t = (int*)arg;
-    *t += 1;
-    printf("sub2: %d\n", *(int*)arg);
-    return NULL;
+    if (*hdr_ptr == NULL){
+        return NULL;
+    }
+    else {
+        Packet* ret = *hdr_ptr;
+        *hdr_ptr = ret->next;
+        ret->next = NULL;
+        return ret;
+    }
+}
+
+void que_print(Packet* hdr)
+{
+    int cnt = 0;
+    for (Packet* t = hdr; t != NULL; t = t->next){
+        cnt += 1;
+        printf("%d, ", *(t->buf));
+    }
+    printf("size = %d\n", cnt);
+}
+
+typedef struct node_t
+{
+    int val;
+    struct node_t* next;
+}Node;
+
+void append(Node** hdr_ptr, int d)
+{
+    Node* node = (Node*)malloc(sizeof(Node));
+    node->val = d;
+    node->next = NULL;
+
+    if (*hdr_ptr == NULL){
+        *hdr_ptr = node;
+    }
+    else {
+        Node* hdr = *hdr_ptr;
+        for (Node* t = *hdr_ptr; t != NULL; t = t->next){
+            if (t->next == NULL){
+                t->next = node;
+                break;
+            }
+        }
+    }
+}
+
+void print(Node* hdr)
+{
+    printf("[");
+    for (Node* t = hdr; t != NULL; t = t->next){
+        printf("%d, ", t->val);
+    }
+    printf("]\n");
 }
 
 int main(void)
 {
-    int* dp;
-    int d = 4;
-    dp = &d;
+    uint8_t v1 = 1;
+    uint8_t v2 = 2;
+    uint8_t v3 = 3;
 
-    int err;
-    pthread_t ntid1, ntid2;
+    Packet* hdr = NULL;
+    Packet* pkt1 = (Packet*)malloc(sizeof(Packet));
+    pkt1->buf = &v1;
+    pkt1->next = NULL;
+    Packet* pkt2 = (Packet*)malloc(sizeof(Packet));
+    pkt2->buf = &v2;
+    pkt2->next = NULL;
+    Packet* pkt3 = (Packet*)malloc(sizeof(Packet));
+    pkt3->buf = &v3;
+    que_append(&hdr, pkt1);
+    que_print(hdr);
+    que_append(&hdr, pkt2);
+    que_print(hdr);
+    que_append(&hdr, pkt3);
+    que_print(hdr);
+    que_pop(&hdr);
+    que_print(hdr);
 
-    err = pthread_create(&ntid1, NULL, thr_fn1, dp);
-    err = pthread_create(&ntid2, NULL, thr_fn2, dp);
-
-    if (err != 0)
-        printf("can't create thread: %s\n", strerror(err));
-    for (int i = 1; i <= 10; i++){
-        d += 1;
-    }
-    printf("main, d = %d\n", d);
-    printids("main thread:");
-    pthread_join(ntid1, NULL);
-    pthread_join(ntid2, NULL);
+//    Node* hdr = NULL;
+//    append(&hdr, 3);
+//    print(hdr);
+//    append(&hdr, 4);
+//    print(hdr);
 
     return 0;
 }
-
-//int main()
-//{
-//    pthread_t a;
-//    printf("%u\n", (unsigned int)a);
-//    pthread_create(&a, NULL, shit, NULL);
-//}

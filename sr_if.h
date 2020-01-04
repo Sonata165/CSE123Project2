@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  * file:  sr_if.h
- * date:  Sun Oct 06 14:13:13 PDT 2002 
- * Contact: casado@stanford.edu 
+ * date:  Sun Oct 06 14:13:13 PDT 2002
+ * Contact: casado@stanford.edu
  *
  * Description:
  *
@@ -34,6 +34,7 @@ typedef struct sr_instance Router;
  * An Interface inside a router
  * -------------------------------------------------------------------------- */
 typedef struct sr_if {
+    uint8_t id; // ID
     char name[sr_IFACE_NAMELEN]; // name
     unsigned char addr[ETHER_ADDR_LEN]; // MAC addr
     uint32_t ip; // IP addr, NETWORK ORDER
@@ -42,6 +43,7 @@ typedef struct sr_if {
 } Interface;
 
 Interface* sr_get_interface(Router* sr, const char* name);
+Interface* if_get_iface_by_id(Router* sr, uint8_t id);
 void sr_add_interface(Router*, const char*);
 void sr_set_ether_addr(Router*, const unsigned char*);
 void sr_set_ether_ip(Router*, uint32_t ip_nbo);
@@ -50,5 +52,6 @@ void sr_print_if(Interface*);
 
 uint32_t if_get_ip(Interface* iface);
 char* if_get_name(Interface* iface);
+uint8_t if_get_id(Interface* iface);
 
 #endif /* --  sr_INTERFACE_H -- */

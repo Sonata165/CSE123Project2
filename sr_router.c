@@ -37,9 +37,11 @@ void sr_init(struct sr_instance* sr)
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
 
     /* Add initialization code here! */
-//    pthread_t thread1;
-//    pthread_create(&thread1, NULL, schedule, sr);
-
+    // Thread for scheduling
+    pthread_t thread1;
+    pthread_create(&thread1, NULL, schedule, sr);
+    memset(sr->que, 0, sizeof(sr->que));
+    sr->if_num = 0;
 } /* -- sr_init -- */
 
 /**
@@ -48,10 +50,26 @@ void sr_init(struct sr_instance* sr)
 void* schedule(void* sr_ptr)
 {
     Router* sr = (Router*)sr_ptr;
+    uint8_t flow_num; // The number of flows
+    uint8_t qu
     pthread_mutex_init(&(sr->lock), NULL);
 
     while (1){
         usleep(1000000); // Schedule every 100 ms.
+        pthread_mutex_lock(&(sr->lock));
+
+        printf("Scheduling!\n");
+        for (int j = 0; j < sr->if_num; j++){
+            for (int i = 0; i < sr->if_num; i++){
+                if (i == j)
+                    continue;
+                if (sr->que[i][j] != NULL){
+
+                }
+            }
+        }
+
+        pthread_mutex_unlock(&(sr->lock));
     }
 
     return NULL;
@@ -89,6 +107,10 @@ void handle_packet(struct sr_instance* sr,
     printf("*** -> Received packet of length %d \n", len);
 
     /* Fill in code here */
+    // Debug
+//    fprintf(stderr, "Interface num: %d\n", sr->if_num);
+//    que_print(sr);
+
     fprintf(stderr, "*** -> Received packet of length %d from interface %s \n", len, in_iface_name);
     print_hdrs(packet, len);
 
@@ -112,6 +134,8 @@ void handle_packet(struct sr_instance* sr,
     else {
         fprintf(stderr, "Invalid ethertype: %x\n", type);
     }
+
+
 }
 
 /**
@@ -294,11 +318,14 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
             eth_copy_addr(eth_hdr->dst_mac_addr, arp_entry->mac);
 
             /* forward packet */
-            sr_send_packet(sr, packet, len, out_iface_name);
+            //sr_send_packet(sr, packet, len, out_iface_name);
+            // Buffer packet
+            sr_buffer_packet(sr, packet, len, in_iface_name, out_iface_name);
 
             // Debug
             fprintf(stderr, "Forwarding packet from interface %s:\n", out_iface_name);
             print_hdrs(packet, len);
+            que_print(sr);
         }
         else {
             fprintf(stderr, "No ARP cache!\n");
@@ -306,9 +333,36 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
                     in_iface_name, out_iface_name);
             send_arp_request(sr, req);
         }
-
         free(rtable_entry);
     }
+}
+
+/**
+ * Add an IP packet to the corresponding queue.
+ * Using virtual queuing.
+ */
+void sr_buffer_packet(Router* sr, uint8_t* buf, unsigned int len, char* in_iface_name,
+        char* out_iface_name)
+{
+    Interface* in_iface = sr_get_interface(sr, in_iface_name);
+    Interface* out_iface = sr_get_interface(sr, out_iface_name);
+    uint8_t in_id = if_get_id(in_iface);
+    uint8_t out_id = if_get_id(out_iface);
+
+    Packet* pkt = (Packet*)malloc(sizeof(Packet));
+    pkt->buf = (uint8_t*)malloc(len);
+    pkt->in_iface = (char*)malloc(sr_IFACE_NAMELEN);
+    pkt->out_iface = (char*)malloc(sr_IFACE_NAMELEN);
+    memset(pkt->in_iface, 0, sr_IFACE_NAMELEN);
+    memset(pkt->out_iface, 0, sr_IFACE_NAMELEN);
+
+    memcpy(pkt->buf, buf, len);
+    pkt->len = len;
+    strncpy(pkt->in_iface, in_iface_name, sr_IFACE_NAMELEN);
+    strncpy(pkt->out_iface, out_iface_name, sr_IFACE_NAMELEN);
+    pkt->next = NULL;
+
+    que_append(&sr->que[in_id][out_id], pkt);
 }
 
 /**
@@ -371,6 +425,64 @@ void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
     }
 }
 
+/**
+ * Scope: Global
+ * Print the element number of each queue.
+ */
+void que_print(Router* sr)
+{
+    fprintf(stderr, "---------------QUEUE---------------\n");
+    for (int i = 0; i < sr->if_num; i++){
+        Interface* iface_i = if_get_iface_by_id(sr, i);
+        for (int j = 0; j < sr->if_num; j++){
+            if (i == j)
+                continue;
+            Interface* iface_j = if_get_iface_by_id(sr, j);
+            uint8_t cnt = 0;
+            Packet* t;
+            for (t = sr->que[i][j]; t != NULL; t = t->next){
+                cnt += 1;
+            }
+            fprintf(stderr, "Queue %s, %s: %d packets.\n", if_get_name(iface_i),
+                    if_get_name(iface_j), cnt);
+        }
+    }
+    fprintf(stderr, "-----------------------------------\n");
+}
 
 
+/**
+ * Scope: Local
+ * Append a node to the end of a queue.
+ */
+void que_append(Packet** hdr_ptr, Packet* packet)
+{
+    if (*hdr_ptr == NULL){
+        *hdr_ptr = packet;
+    }
+    else {
+        for (Packet* t = *hdr_ptr; t != NULL; t = t->next){
+            if (t->next == NULL){
+                t->next = packet;
+                break;
+            }
+        }
+    }
+}
 
+/**
+ * Scope: Local
+ * Pop out the 1st node of a queue.
+ */
+Packet* que_pop(Packet** hdr_ptr)
+{
+    if (*hdr_ptr == NULL){
+        return NULL;
+    }
+    else {
+        Packet* ret = *hdr_ptr;
+        *hdr_ptr = ret->next;
+        ret->next = NULL;
+        return ret;
+    }
+}

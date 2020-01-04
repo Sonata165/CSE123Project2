@@ -427,18 +427,19 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
         close(sr->sockfd);
         return -1;
     }
-
-    if((buf = malloc(len)) == 0)
+    printf("11!\n");
+    buf = malloc(len);
+    printf("12!\n");
+    if(buf == NULL)
     {
         fprintf(stderr,"Error: out of memory (sr_read_from_server)\n");
         return -1;
     }
-
+    printf("13!\n");
     /* set first field of command since we've already read it */
     *((int *)buf) = htonl(len);
 
     bytes_read = 0;
-
     /* read the rest of the command */
     while ( bytes_read < len - 4)
     {
@@ -457,7 +458,6 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
             bytes_read += ret;
         } while (errno == EINTR); /* be mindful of signals */
     }
-
     /* My entry for most unreadable line of code - guido */
     /* ... you win - mc                                  */
     command = *(((int *)buf)+1) = ntohl(*(((int *)buf)+1));

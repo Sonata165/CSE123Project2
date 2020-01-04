@@ -38,25 +38,45 @@
 typedef struct sr_if Interface;
 typedef struct sr_rt RTable;
 
+/**
+ * Structure of an Ethernet Frame inside the router
+ */
+typedef struct packet_t {
+    uint8_t* buf;           /* A raw Ethernet frame, presumably with the dest MAC empty */
+    unsigned int len;           /* Length of raw Ethernet frame */
+    char* in_iface;
+    char* out_iface;
+    struct packet_t* next;
+} Packet;
+
 /* ----------------------------------------------------------------------------
  * struct sr_instance
  *
  * Encapsulation of the state for a single virtual router.
  * -------------------------------------------------------------------------- */
 typedef struct sr_instance {
+    /* Required by the framework */
     int sockfd; /* socket to server */
     char user[32]; /* user name */
     char host[32]; /* host name */
     char template[30]; /* template name if any */
     unsigned short topo_id;
     struct sockaddr_in sr_addr; /* address to server */
+    pthread_attr_t attr;
+    FILE* logfile;
+
+    /* Useful Attributes */
+    uint8_t if_num; // The number of interfaces
     Interface* if_list; /* list of interfaces */
     RTable* routing_table; /* routing table */
     struct sr_arpcache cache; /* ARP cache */
-    pthread_attr_t attr;
-    FILE* logfile;
-    pthread_mutex_t lock;
+
+    /* Used for scheduling */
+    Packet* que[16][16]; // queues' head of each interface.
+    pthread_mutex_t lock; // Lock used for pthreads
 } Router;
+
+
 
 /* -- sr_main.c -- */
 int sr_verify_routing_table(struct sr_instance* sr);
@@ -83,6 +103,11 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,
 void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
         unsigned int len, char* interface_name);
 void* schedule(void* sr);
+void que_print(Router* sr);
+void que_append(Packet** hdr_ptr, Packet* packet);
+Packet* que_pop(Packet** hdr_ptr);
+void sr_buffer_packet(Router* sr, uint8_t* buf, unsigned int len, char* in_iface_name,
+        char* out_iface_name);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance*, const char*);

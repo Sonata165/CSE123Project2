@@ -126,14 +126,19 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,
             eth_copy_addr(eth_hdr->src_mac_addr, arp_hdr->dst_mac_addr);
             eth_copy_addr(eth_hdr->dst_mac_addr, arp_hdr->src_mac_addr);
 
-            /* Forward packet */
-            sr_send_packet(sr, pkt->buf, pkt->len, pkt->out_iface);
+//            /* Forward packet */
+//            sr_send_packet(sr, pkt->buf, pkt->len, pkt->out_iface);
+            /* Queue the packet */
+            sr_buffer_packet(sr, pkt->buf, pkt->len, pkt->in_iface, pkt->out_iface);
 
             // Debug
             fprintf(stderr, "Forwarding packet from interface %s:\n", pkt->out_iface);
+            fprintf(stderr, "5\n");
             print_hdrs(pkt->buf, pkt->len);
         }
+        fprintf(stderr, "3\n");
         sr_arpreq_destroy(&sr->cache, req);
+        fprintf(stderr, "4\n");
     }
 }
 
