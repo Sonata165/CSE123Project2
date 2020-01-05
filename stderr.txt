@@ -1,58 +1,26 @@
-*** -> Received packet of length 42 from interface eth3 
+*** -> Received packet of length 98 from interface eth3 
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: FF:FF:FF:FF:FF:FF
-	source: F6:1B:96:86:9D:E3
-	type: 2054
-ARP header
-	hardware type: 1
-	protocol type: 2048
-	hardware address length: 6
-	protocol address length: 4
-	opcode: 1
-	sender hardware address: F6:1B:96:86:9D:E3
-	sender ip address: 10.0.1.100
-	target hardware address: 00:00:00:00:00:00
-	target ip address: 10.0.1.1
-------------------------------------------------
-It's an ARP packet!
-ARP req!
-Construct ARP reply:
------------------PRINT HEADERS------------------
-ETHERNET header:
-	destination: F6:1B:96:86:9D:E3
-	source: B2:65:14:58:CB:C4
-	type: 2054
-ARP header
-	hardware type: 1
-	protocol type: 2048
-	hardware address length: 6
-	protocol address length: 4
-	opcode: 2
-	sender hardware address: B2:65:14:58:CB:C4
-	sender ip address: 10.0.1.1
-	target hardware address: F6:1B:96:86:9D:E3
-	target ip address: 10.0.1.100
-------------------------------------------------
-*** -> Received packet of length 74 from interface eth3 
------------------PRINT HEADERS------------------
-ETHERNET header:
-	destination: B2:65:14:58:CB:C4
-	source: F6:1B:96:86:9D:E3
+	destination: 7A:26:E9:64:20:FB
+	source: 6A:76:0C:F1:B7:BA
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
-	length: 60
-	id: 44194
+	length: 84
+	id: 46000
 	fragment flag: DF
 	fragment offset: 0
 	TTL: 64
-	protocol: 6
-	checksum: 27603
+	protocol: 1
+	checksum: 19148
 	source: 10.0.1.100
 	destination: 172.64.3.10
+ICMP header:
+	type: 8
+	code: 0
+	checksum: 1905
 ------------------------------------------------
 It's an IP packet!
 Not for me, Need forwarding!
@@ -77,7 +45,7 @@ ARP request constructed:
 -----------------PRINT HEADERS------------------
 ETHERNET header:
 	destination: FF:FF:FF:FF:FF:FF
-	source: 36:88:CF:D9:46:82
+	source: 7E:45:82:3C:D6:DA
 	type: 2054
 ARP header
 	hardware type: 1
@@ -85,7 +53,7 @@ ARP header
 	hardware address length: 6
 	protocol address length: 4
 	opcode: 1
-	sender hardware address: 36:88:CF:D9:46:82
+	sender hardware address: 7E:45:82:3C:D6:DA
 	sender ip address: 172.64.3.1
 	target hardware address: 00:00:00:00:00:00
 	target ip address: 172.64.3.10
@@ -94,8 +62,8 @@ Now you're sent for 1 times
 *** -> Received packet of length 42 from interface eth2 
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: 36:88:CF:D9:46:82
-	source: CA:C3:84:73:18:77
+	destination: 7E:45:82:3C:D6:DA
+	source: 4A:CB:45:D4:CE:46
 	type: 2054
 ARP header
 	hardware type: 1
@@ -103,9 +71,9 @@ ARP header
 	hardware address length: 6
 	protocol address length: 4
 	opcode: 2
-	sender hardware address: CA:C3:84:73:18:77
+	sender hardware address: 4A:CB:45:D4:CE:46
 	sender ip address: 172.64.3.10
-	target hardware address: 36:88:CF:D9:46:82
+	target hardware address: 7E:45:82:3C:D6:DA
 	target ip address: 172.64.3.1
 ------------------------------------------------
 It's an ARP packet!
@@ -114,44 +82,157 @@ Forwarding packet from interface eth2:
 5
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: CA:C3:84:73:18:77
-	source: 36:88:CF:D9:46:82
+	destination: 4A:CB:45:D4:CE:46
+	source: 7E:45:82:3C:D6:DA
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
-	length: 60
-	id: 44194
+	length: 84
+	id: 46000
 	fragment flag: DF
 	fragment offset: 0
 	TTL: 63
-	protocol: 6
-	checksum: 27604
+	protocol: 1
+	checksum: 19149
 	source: 10.0.1.100
 	destination: 172.64.3.10
+ICMP header:
+	type: 8
+	code: 0
+	checksum: 1905
 ------------------------------------------------
 3
 4
-*** -> Received packet of length 74 from interface eth3 
+*** -> Received packet of length 98 from interface eth2 
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: B2:65:14:58:CB:C4
-	source: F6:1B:96:86:9D:E3
+	destination: 7E:45:82:3C:D6:DA
+	source: 4A:CB:45:D4:CE:46
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
-	length: 60
-	id: 44195
+	length: 84
+	id: 22362
+	fragment offset: 0
+	TTL: 64
+	protocol: 1
+	checksum: 41320
+	source: 172.64.3.10
+	destination: 10.0.1.100
+ICMP header:
+	type: 0
+	code: 0
+	checksum: 1913
+------------------------------------------------
+It's an IP packet!
+Not for me, Need forwarding!
+I'm looking for 167772516: 10.0.1.100
+192.168.2.2
+10.0.1.100
+check = 0
+172.64.3.10
+10.0.1.100
+check = 0
+10.0.1.100
+10.0.1.100
+check = 32
+192.168.2.0
+10.0.1.0
+check = 0
+finally, chose eth3
+nexthop_ip: 10.0.1.100
+out interface name: eth3
+No ARP cache!
+ARP request constructed: 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: FF:FF:FF:FF:FF:FF
+	source: 7A:26:E9:64:20:FB
+	type: 2054
+ARP header
+	hardware type: 1
+	protocol type: 2048
+	hardware address length: 6
+	protocol address length: 4
+	opcode: 1
+	sender hardware address: 7A:26:E9:64:20:FB
+	sender ip address: 10.0.1.1
+	target hardware address: 00:00:00:00:00:00
+	target ip address: 10.0.1.100
+------------------------------------------------
+Now you're sent for 1 times
+*** -> Received packet of length 42 from interface eth3 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 7A:26:E9:64:20:FB
+	source: 6A:76:0C:F1:B7:BA
+	type: 2054
+ARP header
+	hardware type: 1
+	protocol type: 2048
+	hardware address length: 6
+	protocol address length: 4
+	opcode: 2
+	sender hardware address: 6A:76:0C:F1:B7:BA
+	sender ip address: 10.0.1.100
+	target hardware address: 7A:26:E9:64:20:FB
+	target ip address: 10.0.1.1
+------------------------------------------------
+It's an ARP packet!
+ARP reply!
+Forwarding packet from interface eth3:
+5
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 6A:76:0C:F1:B7:BA
+	source: 7A:26:E9:64:20:FB
+	type: 2048
+IP header:
+	version: 4
+	header length: 5
+	type of service: 0
+	length: 84
+	id: 22362
+	fragment offset: 0
+	TTL: 63
+	protocol: 1
+	checksum: 41321
+	source: 172.64.3.10
+	destination: 10.0.1.100
+ICMP header:
+	type: 0
+	code: 0
+	checksum: 1913
+------------------------------------------------
+3
+4
+*** -> Received packet of length 98 from interface eth3 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 7A:26:E9:64:20:FB
+	source: 6A:76:0C:F1:B7:BA
+	type: 2048
+IP header:
+	version: 4
+	header length: 5
+	type of service: 0
+	length: 84
+	id: 46001
 	fragment flag: DF
 	fragment offset: 0
 	TTL: 64
-	protocol: 6
-	checksum: 27347
+	protocol: 1
+	checksum: 18892
 	source: 10.0.1.100
 	destination: 172.64.3.10
+ICMP header:
+	type: 8
+	code: 0
+	checksum: 60813
 ------------------------------------------------
 It's an IP packet!
 Not for me, Need forwarding!
@@ -175,54 +256,135 @@ ARP HIT!
 Forwarding packet from interface eth2:
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: CA:C3:84:73:18:77
-	source: 36:88:CF:D9:46:82
+	destination: 4A:CB:45:D4:CE:46
+	source: 7E:45:82:3C:D6:DA
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
-	length: 60
-	id: 44195
+	length: 84
+	id: 46001
 	fragment flag: DF
 	fragment offset: 0
 	TTL: 63
-	protocol: 6
-	checksum: 27348
+	protocol: 1
+	checksum: 18893
 	source: 10.0.1.100
 	destination: 172.64.3.10
+ICMP header:
+	type: 8
+	code: 0
+	checksum: 60813
 ------------------------------------------------
 ---------------QUEUE---------------
-Queue eth3, eth2: 2 packets.
-Queue eth3, eth1: 0 packets.
+****** High priority queue ******
 Queue eth2, eth3: 0 packets.
-Queue eth2, eth1: 0 packets.
+Queue eth1, eth3: 0 packets.
+Queue eth1, eth2: 0 packets.
+****** Low Priority queue ******
+Queue eth2, eth3: 0 packets.
+Queue eth1, eth3: 0 packets.
+Queue eth1, eth2: 0 packets.
+-----------------------------------
+*** -> Received packet of length 98 from interface eth2 
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 7E:45:82:3C:D6:DA
+	source: 4A:CB:45:D4:CE:46
+	type: 2048
+IP header:
+	version: 4
+	header length: 5
+	type of service: 0
+	length: 84
+	id: 22363
+	fragment offset: 0
+	TTL: 64
+	protocol: 1
+	checksum: 41064
+	source: 172.64.3.10
+	destination: 10.0.1.100
+ICMP header:
+	type: 0
+	code: 0
+	checksum: 60821
+------------------------------------------------
+It's an IP packet!
+Not for me, Need forwarding!
+I'm looking for 167772516: 10.0.1.100
+192.168.2.2
+10.0.1.100
+check = 0
+172.64.3.10
+10.0.1.100
+check = 0
+10.0.1.100
+10.0.1.100
+check = 32
+192.168.2.0
+10.0.1.0
+check = 0
+finally, chose eth3
+nexthop_ip: 10.0.1.100
+out interface name: eth3
+ARP HIT!
+Forwarding packet from interface eth3:
+-----------------PRINT HEADERS------------------
+ETHERNET header:
+	destination: 6A:76:0C:F1:B7:BA
+	source: 7A:26:E9:64:20:FB
+	type: 2048
+IP header:
+	version: 4
+	header length: 5
+	type of service: 0
+	length: 84
+	id: 22363
+	fragment offset: 0
+	TTL: 63
+	protocol: 1
+	checksum: 41065
+	source: 172.64.3.10
+	destination: 10.0.1.100
+ICMP header:
+	type: 0
+	code: 0
+	checksum: 60821
+------------------------------------------------
+---------------QUEUE---------------
+****** High priority queue ******
+Queue eth2, eth3: 0 packets.
+Queue eth1, eth3: 0 packets.
+Queue eth1, eth2: 0 packets.
+****** Low Priority queue ******
+Queue eth2, eth3: 1 packets.
 Queue eth1, eth3: 0 packets.
 Queue eth1, eth2: 0 packets.
 -----------------------------------
 *** -> Received packet of length 98 from interface eth3 
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: B2:65:14:58:CB:C4
-	source: F6:1B:96:86:9D:E3
+	destination: 7A:26:E9:64:20:FB
+	source: 6A:76:0C:F1:B7:BA
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
 	length: 84
-	id: 15187
+	id: 46002
 	fragment flag: DF
 	fragment offset: 0
 	TTL: 64
 	protocol: 1
-	checksum: 43076
+	checksum: 18636
 	source: 10.0.1.100
 	destination: 172.64.3.10
 ICMP header:
 	type: 8
 	code: 0
-	checksum: 34250
+	checksum: 52104
 ------------------------------------------------
 It's an IP packet!
 Not for me, Need forwarding!
@@ -246,182 +408,145 @@ ARP HIT!
 Forwarding packet from interface eth2:
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: CA:C3:84:73:18:77
-	source: 36:88:CF:D9:46:82
+	destination: 4A:CB:45:D4:CE:46
+	source: 7E:45:82:3C:D6:DA
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
 	length: 84
-	id: 15187
+	id: 46002
 	fragment flag: DF
 	fragment offset: 0
 	TTL: 63
 	protocol: 1
-	checksum: 43077
+	checksum: 18637
 	source: 10.0.1.100
 	destination: 172.64.3.10
 ICMP header:
 	type: 8
 	code: 0
-	checksum: 34250
+	checksum: 52104
 ------------------------------------------------
 ---------------QUEUE---------------
-Queue eth3, eth2: 3 packets.
-Queue eth3, eth1: 0 packets.
+****** High priority queue ******
 Queue eth2, eth3: 0 packets.
-Queue eth2, eth1: 0 packets.
+Queue eth1, eth3: 0 packets.
+Queue eth1, eth2: 0 packets.
+****** Low Priority queue ******
+Queue eth2, eth3: 0 packets.
 Queue eth1, eth3: 0 packets.
 Queue eth1, eth2: 0 packets.
 -----------------------------------
-*** -> Received packet of length 98 from interface eth3 
+*** -> Received packet of length 98 from interface eth2 
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: B2:65:14:58:CB:C4
-	source: F6:1B:96:86:9D:E3
+	destination: 7E:45:82:3C:D6:DA
+	source: 4A:CB:45:D4:CE:46
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
 	length: 84
-	id: 15229
-	fragment flag: DF
+	id: 22364
 	fragment offset: 0
 	TTL: 64
 	protocol: 1
-	checksum: 32324
-	source: 10.0.1.100
-	destination: 172.64.3.10
+	checksum: 40808
+	source: 172.64.3.10
+	destination: 10.0.1.100
 ICMP header:
-	type: 8
+	type: 0
 	code: 0
-	checksum: 26966
+	checksum: 52112
 ------------------------------------------------
 It's an IP packet!
 Not for me, Need forwarding!
-I'm looking for 2889876234: 172.64.3.10
+I'm looking for 167772516: 10.0.1.100
 192.168.2.2
-172.64.3.10
-check = 1
-172.64.3.10
-172.64.3.10
-check = 32
 10.0.1.100
-172.64.3.10
 check = 0
+172.64.3.10
+10.0.1.100
+check = 0
+10.0.1.100
+10.0.1.100
+check = 32
 192.168.2.0
-172.64.3.0
-check = 1
-finally, chose eth2
-nexthop_ip: 172.64.3.10
-out interface name: eth2
+10.0.1.0
+check = 0
+finally, chose eth3
+nexthop_ip: 10.0.1.100
+out interface name: eth3
 ARP HIT!
-Forwarding packet from interface eth2:
+Forwarding packet from interface eth3:
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: CA:C3:84:73:18:77
-	source: 36:88:CF:D9:46:82
+	destination: 6A:76:0C:F1:B7:BA
+	source: 7A:26:E9:64:20:FB
 	type: 2048
 IP header:
 	version: 4
 	header length: 5
 	type of service: 0
 	length: 84
-	id: 15229
-	fragment flag: DF
+	id: 22364
 	fragment offset: 0
 	TTL: 63
 	protocol: 1
-	checksum: 32325
-	source: 10.0.1.100
-	destination: 172.64.3.10
+	checksum: 40809
+	source: 172.64.3.10
+	destination: 10.0.1.100
 ICMP header:
-	type: 8
+	type: 0
 	code: 0
-	checksum: 26966
+	checksum: 52112
 ------------------------------------------------
 ---------------QUEUE---------------
-Queue eth3, eth2: 4 packets.
-Queue eth3, eth1: 0 packets.
+****** High priority queue ******
 Queue eth2, eth3: 0 packets.
-Queue eth2, eth1: 0 packets.
+Queue eth1, eth3: 0 packets.
+Queue eth1, eth2: 0 packets.
+****** Low Priority queue ******
+Queue eth2, eth3: 1 packets.
 Queue eth1, eth3: 0 packets.
 Queue eth1, eth2: 0 packets.
 -----------------------------------
-*** -> Received packet of length 98 from interface eth3 
+*** -> Received packet of length 42 from interface eth2 
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: B2:65:14:58:CB:C4
-	source: F6:1B:96:86:9D:E3
-	type: 2048
-IP header:
-	version: 4
-	header length: 5
-	type of service: 0
-	length: 84
-	id: 15362
-	fragment flag: DF
-	fragment offset: 0
-	TTL: 64
-	protocol: 1
-	checksum: 63811
-	source: 10.0.1.100
-	destination: 172.64.3.10
-ICMP header:
-	type: 8
-	code: 0
-	checksum: 16638
+	destination: 7E:45:82:3C:D6:DA
+	source: 4A:CB:45:D4:CE:46
+	type: 2054
+ARP header
+	hardware type: 1
+	protocol type: 2048
+	hardware address length: 6
+	protocol address length: 4
+	opcode: 1
+	sender hardware address: 4A:CB:45:D4:CE:46
+	sender ip address: 172.64.3.10
+	target hardware address: 00:00:00:00:00:00
+	target ip address: 172.64.3.1
 ------------------------------------------------
-It's an IP packet!
-Not for me, Need forwarding!
-I'm looking for 2889876234: 172.64.3.10
-192.168.2.2
-172.64.3.10
-check = 1
-172.64.3.10
-172.64.3.10
-check = 32
-10.0.1.100
-172.64.3.10
-check = 0
-192.168.2.0
-172.64.3.0
-check = 1
-finally, chose eth2
-nexthop_ip: 172.64.3.10
-out interface name: eth2
-ARP HIT!
-Forwarding packet from interface eth2:
+It's an ARP packet!
+ARP req!
+Construct ARP reply:
 -----------------PRINT HEADERS------------------
 ETHERNET header:
-	destination: CA:C3:84:73:18:77
-	source: 36:88:CF:D9:46:82
-	type: 2048
-IP header:
-	version: 4
-	header length: 5
-	type of service: 0
-	length: 84
-	id: 15362
-	fragment flag: DF
-	fragment offset: 0
-	TTL: 63
-	protocol: 1
-	checksum: 63812
-	source: 10.0.1.100
-	destination: 172.64.3.10
-ICMP header:
-	type: 8
-	code: 0
-	checksum: 16638
+	destination: 4A:CB:45:D4:CE:46
+	source: 7E:45:82:3C:D6:DA
+	type: 2054
+ARP header
+	hardware type: 1
+	protocol type: 2048
+	hardware address length: 6
+	protocol address length: 4
+	opcode: 2
+	sender hardware address: 7E:45:82:3C:D6:DA
+	sender ip address: 172.64.3.1
+	target hardware address: 4A:CB:45:D4:CE:46
+	target ip address: 172.64.3.10
 ------------------------------------------------
----------------QUEUE---------------
-Queue eth3, eth2: 5 packets.
-Queue eth3, eth1: 0 packets.
-Queue eth2, eth3: 0 packets.
-Queue eth2, eth1: 0 packets.
-Queue eth1, eth3: 0 packets.
-Queue eth1, eth2: 0 packets.
------------------------------------

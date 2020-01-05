@@ -40,7 +40,8 @@ void sr_init(struct sr_instance* sr)
     // Thread for scheduling
     pthread_t thread1;
     pthread_create(&thread1, NULL, schedule, sr);
-    memset(sr->que, 0, sizeof(sr->que));
+    memset(sr->lp_que, 0, sizeof(sr->lp_que));
+    memset(sr->hp_que, 0, sizeof(sr->hp_que));
     sr->if_num = 0;
 } /* -- sr_init -- */
 
@@ -50,24 +51,71 @@ void sr_init(struct sr_instance* sr)
 void* schedule(void* sr_ptr)
 {
     Router* sr = (Router*)sr_ptr;
-    uint8_t flow_num; // The number of flows
-    uint8_t qu
+    uint8_t flow_num; // The number of flows (unit: lpq)
+    float quantum; // The upper bound of sending rate of a low priority queue in each round
+    float lp_df[16][16]; // Deficit of low priority queue
+    float hp_df[16][16]; // deficit of high priority queue
+    memset(lp_df, 0, sizeof(lp_df));
+    memset(hp_df, 0, sizeof(hp_df));
     pthread_mutex_init(&(sr->lock), NULL);
 
     while (1){
-        usleep(1000000); // Schedule every 100 ms.
+        usleep(SCHEDULE_PERIOD);
         pthread_mutex_lock(&(sr->lock));
 
-        printf("Scheduling!\n");
+        printf("Scheduling Start!\n");
         for (int j = 0; j < sr->if_num; j++){
+            flow_num = 0;
+            Interface* iface_j = if_get_iface_by_id(sr, j);
+
+            /* Compute Quantum */
             for (int i = 0; i < sr->if_num; i++){
                 if (i == j)
                     continue;
-                if (sr->que[i][j] != NULL){
+                if (sr->lp_que[i][j] != NULL){
+                    flow_num += 1;
+                }
+                if (sr->hp_que[i][j] != NULL){
+                    flow_num += 10;
+                }
+            }
+            quantum = LINK_RATE * 1.0 / flow_num * (SCHEDULE_PERIOD / 1000000.0);
+            printf("When %s is the out_iface, Flow num = %d, Quantum is %.2f Bytes per %.2f second\n", 
+                    if_get_name(iface_j), flow_num, quantum, SCHEDULE_PERIOD / 1000000.0);
 
+            /* Deficit round robin */
+            for (int i = 0; i < sr->if_num; i++){
+                if (i == j)
+                    continue;
+                // Deal with high priority queue
+                if (sr->hp_que[i][j] != NULL){
+                    hp_df[i][j] += quantum * 10;
+                    while (sr->hp_que[i][j] != NULL && hp_df[i][j] >= sr->lp_que[i][j]->len){
+                        hp_df[i][j] -= sr->hp_que[i][j]->len;
+                        Packet* pkt = que_pop(&sr->hp_que[i][j]);
+                        sr_send_packet(sr, pkt->buf, pkt->len, pkt->out_iface);
+                        // May need free here
+                    }
+                    if (sr->hp_que[i][j] == NULL){
+                        hp_df[i][j] = 0;
+                    }
+                }
+                // Deal with low priority queue
+                if (sr->lp_que[i][j] != NULL){
+                    lp_df[i][j] += quantum;
+                    while (sr->lp_que[i][j] != NULL && lp_df[i][j] >= sr->lp_que[i][j]->len){
+                        lp_df[i][j] -= sr->lp_que[i][j]->len;
+                        Packet* pkt = que_pop(&sr->lp_que[i][j]);
+                        sr_send_packet(sr, pkt->buf, pkt->len, pkt->out_iface);
+                        // May need free here
+                    }
+                    if (sr->lp_que[i][j] == NULL){
+                        lp_df[i][j] = 0;
+                    }
                 }
             }
         }
+        printf("Scheduling Finish!\n");
 
         pthread_mutex_unlock(&(sr->lock));
     }
@@ -320,7 +368,8 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
             /* forward packet */
             //sr_send_packet(sr, packet, len, out_iface_name);
             // Buffer packet
-            sr_buffer_packet(sr, packet, len, in_iface_name, out_iface_name);
+            uint8_t tos = ip_get_tos(ip_hdr);
+            sr_buffer_packet(sr, packet, len, in_iface_name, out_iface_name, tos);
 
             // Debug
             fprintf(stderr, "Forwarding packet from interface %s:\n", out_iface_name);
@@ -340,9 +389,11 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
 /**
  * Add an IP packet to the corresponding queue.
  * Using virtual queuing.
+ * Parameters:
+ *   tos - If it's 1, packet will be buffered to the high priority queue.
  */
 void sr_buffer_packet(Router* sr, uint8_t* buf, unsigned int len, char* in_iface_name,
-        char* out_iface_name)
+        char* out_iface_name, uint8_t tos)
 {
     Interface* in_iface = sr_get_interface(sr, in_iface_name);
     Interface* out_iface = sr_get_interface(sr, out_iface_name);
@@ -362,7 +413,12 @@ void sr_buffer_packet(Router* sr, uint8_t* buf, unsigned int len, char* in_iface
     strncpy(pkt->out_iface, out_iface_name, sr_IFACE_NAMELEN);
     pkt->next = NULL;
 
-    que_append(&sr->que[in_id][out_id], pkt);
+    if (tos == IP_HI_THRPT){
+        que_append(&sr->hp_que[in_id][out_id], pkt);
+    }
+    else {
+        que_append(&sr->lp_que[in_id][out_id], pkt);
+    }
 }
 
 /**
@@ -432,18 +488,31 @@ void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
 void que_print(Router* sr)
 {
     fprintf(stderr, "---------------QUEUE---------------\n");
+    fprintf(stderr, "****** High priority queue ******\n");
     for (int i = 0; i < sr->if_num; i++){
         Interface* iface_i = if_get_iface_by_id(sr, i);
-        for (int j = 0; j < sr->if_num; j++){
-            if (i == j)
-                continue;
+        for (int j = 0; j != i && j < sr->if_num; j++){
             Interface* iface_j = if_get_iface_by_id(sr, j);
             uint8_t cnt = 0;
             Packet* t;
-            for (t = sr->que[i][j]; t != NULL; t = t->next){
+            for (t = sr->hp_que[i][j]; t != NULL; t = t->next){
                 cnt += 1;
             }
-            fprintf(stderr, "Queue %s, %s: %d packets.\n", if_get_name(iface_i),
+            fprintf(stderr, "%s -> %s: %d packets.\n", if_get_name(iface_i),
+                    if_get_name(iface_j), cnt);
+        }
+    }
+    fprintf(stderr, "****** Low Priority queue ******\n");
+    for (int i = 0; i < sr->if_num; i++){
+        Interface* iface_i = if_get_iface_by_id(sr, i);
+        for (int j = 0; j != i && j < sr->if_num; j++){
+            Interface* iface_j = if_get_iface_by_id(sr, j);
+            uint8_t cnt = 0;
+            Packet* t;
+            for (t = sr->lp_que[i][j]; t != NULL; t = t->next){
+                cnt += 1;
+            }
+            fprintf(stderr, "%s -> %s: %d packets.\n", if_get_name(iface_i),
                     if_get_name(iface_j), cnt);
         }
     }

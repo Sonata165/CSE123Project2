@@ -81,30 +81,10 @@ void print(Node* hdr)
     }
     printf("]\n");
 }
-
+#define A 0x08
 int main(void)
 {
-    uint8_t v1 = 1;
-    uint8_t v2 = 2;
-    uint8_t v3 = 3;
-
-    Packet* hdr = NULL;
-    Packet* pkt1 = (Packet*)malloc(sizeof(Packet));
-    pkt1->buf = &v1;
-    pkt1->next = NULL;
-    Packet* pkt2 = (Packet*)malloc(sizeof(Packet));
-    pkt2->buf = &v2;
-    pkt2->next = NULL;
-    Packet* pkt3 = (Packet*)malloc(sizeof(Packet));
-    pkt3->buf = &v3;
-    que_append(&hdr, pkt1);
-    que_print(hdr);
-    que_append(&hdr, pkt2);
-    que_print(hdr);
-    que_append(&hdr, pkt3);
-    que_print(hdr);
-    que_pop(&hdr);
-    que_print(hdr);
+    printf("0x%02x\n", A);
 
 //    Node* hdr = NULL;
 //    append(&hdr, 3);

@@ -129,7 +129,9 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet,
 //            /* Forward packet */
 //            sr_send_packet(sr, pkt->buf, pkt->len, pkt->out_iface);
             /* Queue the packet */
-            sr_buffer_packet(sr, pkt->buf, pkt->len, pkt->in_iface, pkt->out_iface);
+            IpHeader* ip_hdr = (IpHeader*)(packet + ETHER_HDR_SIZE);
+            uint8_t tos = ip_get_tos(ip_hdr);
+            sr_buffer_packet(sr, pkt->buf, pkt->len, pkt->in_iface, pkt->out_iface, tos);
 
             // Debug
             fprintf(stderr, "Forwarding packet from interface %s:\n", pkt->out_iface);

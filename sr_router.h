@@ -34,6 +34,9 @@
 #define INIT_TTL 255
 #define PACKET_DUMP_SIZE 1024
 
+#define LINK_RATE 1024 // Output link rate in Bytes/s
+#define SCHEDULE_PERIOD 100000 // Time interval between two scheduling in us. Now it's 100 ms.
+
 /* forward declare */
 typedef struct sr_if Interface;
 typedef struct sr_rt RTable;
@@ -72,7 +75,8 @@ typedef struct sr_instance {
     struct sr_arpcache cache; /* ARP cache */
 
     /* Used for scheduling */
-    Packet* que[16][16]; // queues' head of each interface.
+    Packet* lp_que[16][16]; // Low priority queues' head of each interface.
+    Packet* hp_que[16][16]; // High priority queues
     pthread_mutex_t lock; // Lock used for pthreads
 } Router;
 
@@ -107,7 +111,7 @@ void que_print(Router* sr);
 void que_append(Packet** hdr_ptr, Packet* packet);
 Packet* que_pop(Packet** hdr_ptr);
 void sr_buffer_packet(Router* sr, uint8_t* buf, unsigned int len, char* in_iface_name,
-        char* out_iface_name);
+        char* out_iface_name, uint8_t tos);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance*, const char*);
