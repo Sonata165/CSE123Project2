@@ -427,15 +427,12 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
         close(sr->sockfd);
         return -1;
     }
-    printf("11!\n");
     buf = malloc(len);
-    printf("12!\n");
     if(buf == NULL)
     {
         fprintf(stderr,"Error: out of memory (sr_read_from_server)\n");
         return -1;
     }
-    printf("13!\n");
     /* set first field of command since we've already read it */
     *((int *)buf) = htonl(len);
 
