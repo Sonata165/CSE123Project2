@@ -37,9 +37,32 @@ void sr_init(struct sr_instance* sr)
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
 
     /* Add initialization code here! */
+<<<<<<< Updated upstream
 //    pthread_t thread1;
 //    pthread_create(&thread1, NULL, schedule, sr);
 
+=======
+    // Thread for scheduling
+    pthread_t thread1;
+    pthread_create(&thread1, NULL, schedule, sr);
+
+    // Initialize other fields
+    memset(sr->lp_que, 0, sizeof(sr->lp_que));
+    memset(sr->hp_que, 0, sizeof(sr->hp_que));
+    sr->if_num = 0;
+
+    // Initialize buckts for shaping
+    for (int i = 0; i < 16; i++){
+        for (int j = 0; j < 16; j++){
+            sr->bkts_in[i][j] = bkt_init(103U, 10240U);
+        }
+    }
+    for (int i = 0; i < 16; i++){
+        for (int j = 0; j < 16; j++){
+            sr->bkts_out[i][j] = bkt_init(103U, 10240U);
+        }
+    }
+>>>>>>> Stashed changes
 } /* -- sr_init -- */
 
 /**
@@ -51,7 +74,70 @@ void* schedule(void* sr_ptr)
     pthread_mutex_init(&(sr->lock), NULL);
 
     while (1){
+<<<<<<< Updated upstream
         usleep(1000000); // Schedule every 100 ms.
+=======
+        usleep(SCHEDULE_PERIOD);
+        pthread_mutex_lock(&(sr->lock));
+
+        printf("Scheduling Start!\n");
+        for (int j = 0; j < sr->if_num; j++){ // For each output interface
+            flow_num = 0;
+            Interface* iface_j = if_get_iface_by_id(sr, j);
+
+            /* Compute Quantum */
+            for (int i = 0; i < sr->if_num; i++){
+                if (i == j)
+                    continue;
+                if (sr->lp_que[i][j] != NULL){
+                    flow_num += 1;
+                }
+                if (sr->hp_que[i][j] != NULL){
+                    flow_num += 10;
+                }
+            }
+            quantum = LINK_RATE * 1.0 / flow_num * (SCHEDULE_PERIOD / 1000000.0);
+            printf("When %s is the out_iface, Flow num = %d, Quantum is %.2f Bytes per %.2f second\n",
+                    if_get_name(iface_j), flow_num, quantum, SCHEDULE_PERIOD / 1000000.0);
+
+            /* Deficit round robin */
+            for (int i = 0; i < sr->if_num; i++){
+                if (i == j)
+                    continue;
+                // Deal with high priority queue
+                if (sr->hp_que[i][j] != NULL){
+                    hp_df[i][j] += quantum * 10;
+                    while (sr->hp_que[i][j] != NULL && hp_df[i][j] >= sr->lp_que[i][j]->len){
+                        hp_df[i][j] -= sr->hp_que[i][j]->len;
+                        Packet* pkt = que_pop(&sr->hp_que[i][j]);
+                        sr_send_packet(sr, pkt->buf, pkt->len, pkt->out_iface);
+                        // May need free here
+                    }
+                    if (sr->hp_que[i][j] == NULL){
+                        hp_df[i][j] = 0;
+                    }
+                }
+                // Deal with low priority queue
+                if (sr->lp_que[i][j] != NULL){
+                    lp_df[i][j] += quantum;
+                    while (sr->lp_que[i][j] != NULL && lp_df[i][j] >= sr->lp_que[i][j]->len){
+                        lp_df[i][j] -= sr->lp_que[i][j]->len;
+                        Packet* pkt = que_pop(&sr->lp_que[i][j]);
+                        sr_send_packet(sr, pkt->buf, pkt->len, pkt->out_iface);
+                        // May need free here
+                    }
+                    if (sr->lp_que[i][j] == NULL){
+                        lp_df[i][j] = 0;
+                    }
+                }
+                sr->bkts_in[i][j]->tokens += sr->bkts_in[i][j]->rate;
+                sr->bkts_out[i][j]->tokens += sr->bkts_out[i][j]->rate;
+            }
+        }
+        printf("Scheduling Finish!\n");
+
+        pthread_mutex_unlock(&(sr->lock));
+>>>>>>> Stashed changes
     }
 
     return NULL;
@@ -89,6 +175,14 @@ void handle_packet(struct sr_instance* sr,
     printf("*** -> Received packet of length %d \n", len);
 
     /* Fill in code here */
+<<<<<<< Updated upstream
+=======
+//     Debug
+    bkt_print(sr);
+//    fprintf(stderr, "Interface num: %d\n", sr->if_num);
+//    que_print(sr);
+
+>>>>>>> Stashed changes
     fprintf(stderr, "*** -> Received packet of length %d from interface %s \n", len, in_iface_name);
     print_hdrs(packet, len);
 
@@ -294,7 +388,24 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len,
             eth_copy_addr(eth_hdr->dst_mac_addr, arp_entry->mac);
 
             /* forward packet */
+<<<<<<< Updated upstream
             sr_send_packet(sr, packet, len, out_iface_name);
+=======
+            // Shaping
+            uint8_t in_iface_id = if_get_id(sr_get_interface(sr, in_iface_name));
+            uint8_t out_iface_id = if_get_id(iface);
+            uint32_t tokens = sr->bkts_in[in_iface_id][out_iface_id]->tokens;
+            if (tokens >= len){
+                sr->bkts_in[in_iface_id][out_iface_id] -= len;
+                // Buffer packet
+                uint8_t tos = ip_get_tos(ip_hdr);
+                sr_buffer_packet(sr, packet, len, in_iface_name, out_iface_name, tos);
+            }
+            else {
+                // Drop packet
+                fprintf(stderr, "no enough tokens, drop packet\n");
+            }
+>>>>>>> Stashed changes
 
             // Debug
             fprintf(stderr, "Forwarding packet from interface %s:\n", out_iface_name);
@@ -374,3 +485,61 @@ void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
 
 
 
+<<<<<<< Updated upstream
+=======
+/**
+ * Scope: Local
+ * Pop out the 1st node of a queue.
+ */
+Packet* que_pop(Packet** hdr_ptr)
+{
+    if (*hdr_ptr == NULL){
+        return NULL;
+    }
+    else {
+        Packet* ret = *hdr_ptr;
+        *hdr_ptr = ret->next;
+        ret->next = NULL;
+        return ret;
+    }
+}
+
+/**
+ * Construct and initialize a new bucket.
+ */
+Bucket* bkt_init(uint32_t rate, uint32_t depth)
+{
+    Bucket* ret = (Bucket*)malloc(sizeof(Bucket));
+    ret->tokens = 10240;
+    ret->rate = rate;
+    ret->depth = depth;
+    return ret;
+}
+
+void bkt_print(Router* sr)
+{
+
+    fprintf(stderr, "---------------Bucket---------------\n");
+    fprintf(stderr, "****** Bucket in ******\n");
+    for (int i = 0; i < sr->if_num; i++){
+        Interface* iface_i = if_get_iface_by_id(sr, i);
+        for (int j = 0; j != i && j < sr->if_num; j++){
+            Interface* iface_j = if_get_iface_by_id(sr, j);
+            Bucket* t = sr->bkts_in[i][j];
+            fprintf(stderr, "Bucket In tokens: %d, rate: %d, depth: %d\n", t->tokens, t->rate,
+                    t->depth);
+        }
+    }
+    fprintf(stderr, "****** bucket out ******\n");
+    for (int i = 0; i < sr->if_num; i++){
+        Interface* iface_i = if_get_iface_by_id(sr, i);
+        for (int j = 0; j != i && j < sr->if_num; j++){
+            Interface* iface_j = if_get_iface_by_id(sr, j);
+            Bucket* t = sr->bkts_out[i][j];
+            fprintf(stderr, "Bucket Out tokens: %d, rate: %d, depth: %d\n", t->tokens, t->rate,
+                    t->depth);
+        }
+    }
+    fprintf(stderr, "-----------------------------------\n");
+}
+>>>>>>> Stashed changes

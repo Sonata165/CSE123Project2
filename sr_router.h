@@ -34,9 +34,16 @@
 #define INIT_TTL 255
 #define PACKET_DUMP_SIZE 1024
 
+<<<<<<< Updated upstream
+=======
+#define LINK_RATE 1024 // Output link rate 1024 Bytes/s, 102 Bytes per s
+#define SCHEDULE_PERIOD 100000 // Time interval between two scheduling in us. Now it's 100 ms.
+
+>>>>>>> Stashed changes
 /* forward declare */
 typedef struct sr_if Interface;
 typedef struct sr_rt RTable;
+typedef struct Bucket_t Bucket;
 
 /* ----------------------------------------------------------------------------
  * struct sr_instance
@@ -53,11 +60,34 @@ typedef struct sr_instance {
     Interface* if_list; /* list of interfaces */
     RTable* routing_table; /* routing table */
     struct sr_arpcache cache; /* ARP cache */
+<<<<<<< Updated upstream
     pthread_attr_t attr;
     FILE* logfile;
     pthread_mutex_t lock;
 } Router;
 
+=======
+
+    /* Used for scheduling */
+    Packet* lp_que[16][16]; // Low priority queues' head of each interface.
+    Packet* hp_que[16][16]; // High priority queues
+    pthread_mutex_t lock; // Lock used for pthreads
+
+    /* Used for shaping */
+    Bucket* bkts_in[16][16];
+    Bucket* bkts_out[16][16];
+} Router;
+
+/**
+ * Struct of a bucket used in shaping.
+ */
+typedef struct Bucket_t {
+    uint32_t tokens;
+    uint32_t rate;
+    uint32_t depth;
+} Bucket;
+
+>>>>>>> Stashed changes
 /* -- sr_main.c -- */
 int sr_verify_routing_table(struct sr_instance* sr);
 
@@ -83,6 +113,16 @@ void handle_ip_packet(struct sr_instance* sr, uint8_t* packet,
 void handle_icmp_packet(struct sr_instance* sr, uint8_t* packet,
         unsigned int len, char* interface_name);
 void* schedule(void* sr);
+<<<<<<< Updated upstream
+=======
+void que_print(Router* sr);
+void que_append(Packet** hdr_ptr, Packet* packet);
+Packet* que_pop(Packet** hdr_ptr);
+void sr_buffer_packet(Router* sr, uint8_t* buf, unsigned int len, char* in_iface_name,
+        char* out_iface_name, uint8_t tos);
+Bucket* bkt_init(uint32_t rate, uint32_t depth);
+void bkt_print(Router* sr);
+>>>>>>> Stashed changes
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance*, const char*);
